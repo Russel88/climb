@@ -149,7 +149,7 @@
 		    });
                     $('#entriesList').empty();
                     entries.forEach(function (entry) {
-			$('#entriesList').append('<li data-id="' + entry[0] + '">' + entry[1] + ' <button class="editEntry">Rediger</button></li>');
+			$('#entriesList').append('<li data-id="' + entry[0] + '">' + entry[1] + ' <button class="editEntry">Rediger</button> <button class="deleteEntry">Slet</button></li>');
                     });
                 }).fail(function (xhr, status, error) {
                     console.error('Error loading entries:', status, error); // Log error
@@ -174,7 +174,7 @@
             $('#entriesList').on('click', '.editEntry', function (event) {
                 event.stopPropagation(); // Prevent triggering the entry selection when clicking "Edit"
                 var entryId = $(this).parent().data('id');
-                var currentName = $(this).parent().text().replace(' Rediger', '');
+		var currentName = $(this).parent().text().replace(' Rediger Slet', '');
 
                 var newName = prompt("Rediger beskrivelse af problem:", currentName);
                 if (newName && newName !== currentName) {
@@ -190,6 +190,29 @@
                         },
                         error: function (xhr, status, error) {
                             console.error('Error updating entry:', status, error); // Log error
+                        }
+                    });
+                }
+            });
+
+            $('#entriesList').on('click', '.deleteEntry', function (event) {
+                event.stopPropagation(); // Prevent triggering the entry selection when clicking "Delete"
+                var entryId = $(this).parent().data('id');
+                var entryName = $(this).parent().text().replace(' Rediger Slet', '');
+
+                if (confirm("Er du sikker på du vil slette:\n\n" + entryName)) {
+                    $.ajax({
+                        url: '/delete_entry/' + entryId,
+                        type: 'POST',
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                loadEntries(); // Reload entries after deletion
+                                $('#entry-name').text('Nyt problem'); // Reset entry name display
+                                $('.object').removeClass('selected'); // Clear any selected objects
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error deleting entry:', status, error); // Log error
                         }
                     });
                 }

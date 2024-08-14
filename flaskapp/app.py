@@ -85,5 +85,16 @@ def create_app():
 
         return jsonify({'status': 'success'})
 
+    @app.route('/delete_entry/<int:entry_id>', methods=['POST'])
+    def delete_entry(entry_id):
+        db_path = os.path.join(app.instance_path, 'database.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM entries WHERE id = ?', (entry_id,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'status': 'success'})
+
 
     return app
