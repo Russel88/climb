@@ -1,61 +1,191 @@
 <!DOCTYPE html>
-<html>
+<html lang="da">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krake Crag</title>
     <style>
-        #image-container {
-            position: relative;
-            width: 100%; /* Ensure the container takes the full width of its parent */
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
         }
-        #image-container img {
-            width: 800px;
-            height: auto; /* Maintain aspect ratio */
-            display: block; /* Remove extra space below the image */
+
+        body {
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
         }
-        .object {
-            position: absolute;
-            border-radius: 50%; /* Make the objects circular */
-            background-color: rgba(0, 0, 0, 0);
-            cursor: pointer;
+
+        .content-wrapper {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        .object.selected {
-            background-color: rgba(0, 255, 0, 0.7);
-            border: 2px solid rgba(0, 255, 0, 1); /* Change border color to indicate selection */
+
+        .center-text {
+            text-align: center;
+            margin-bottom: 20px;
         }
-	.content-wrapper {
-	    max-width: 800px; /* Adjust the width as needed */
-	    margin: 20px auto; /* Centers the div horizontally */
-	    padding: 20px; /* Adds space inside the div */
-	    border: 1px solid #ccc; /* Adds a light border */
-	    background-color: #f9f9f9; /* Optional: Light background for contrast */
-	    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Optional: Adds a subtle shadow for depth */
-	}
+
+        h1 {
+            font-size: 3rem;
+            color: #2c3e50;
+        }
+
         #entry-name {
-            font-size: 30px;
+            font-size: 1.75rem;
             font-weight: bold;
+            color: #2980b9;
             margin-bottom: 10px;
         }
-	.center-text {
-    	    text-align: center;
-	}
+
+        p {
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        #image-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+
+        #image-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .object {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0);
+            cursor: pointer;
+            transition: border 0.3s ease, background-color 0.3s ease;
+        }
+
+        .object.selected {
+            background-color: rgba(0, 255, 0, 0.8);
+            border: 2px solid rgba(0, 255, 0, 0.8);
+        }
+
+        .button {
+            display: block;
+            margin: 0 auto 20px auto;
+            padding: 10px 20px;
+            font-size: 1.25rem;
+            color: #fff;
+            background-color: #2980b9;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #3498db;
+        }
+
+        label {
+            font-size: 1.125rem;
+            margin-right: 10px;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 40px);
+            padding: 10px;
+            font-size: 1.125rem;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        ul li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            font-size: 1.125rem;
+            border-bottom: 1px solid #ddd;
+            transition: background-color 0.3s ease;
+        }
+
+        ul li:hover {
+            background-color: #f5f5f5;
+        }
+
+        .entry-text {
+            flex-grow: 1;
+            margin-right: 10px;
+            word-wrap: break-word;
+        }
+
+        .entry-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .editEntry, .deleteEntry {
+            padding: 5px 10px;
+            font-size: 0.875rem;
+            color: #fff;
+            background-color: #e67e22;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .editEntry:hover {
+            background-color: #d35400;
+        }
+
+        .deleteEntry {
+            background-color: #e74c3c;
+        }
+
+        .deleteEntry:hover {
+            background-color: #c0392b;
+        }
+
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
     <div class="content-wrapper">
-    <p style="font-size: 50px" class="center-text">Velkommen til Krakes klatrevæg</p>
-    <div id="entry-name" class="center-text">Nyt problem</div> <!-- Text display area -->
-    <p style="font-size: 16px" class="center-text">To cirkler ved startgreb</p> <!-- Text display area -->
-    <button id="clearSelection" style="display: block; margin: 0 auto; font-size: 18px;">Fjern selektion</button> <!-- New Button -->
-    <div id="image-container">
-        <img id="main-image" src="{{ url_for('static', filename='wall.jpg') }}" alt="Wall" />
+        <h1 class="center-text">Velkommen til Krakes klatrevæg</h1>
+        <div id="entry-name" class="center-text">Nyt problem</div>
+        <p class="center-text">To cirkler ved startgreb</p>
+        <button id="clearSelection" class="button">Fjern selektion</button>
+        <div id="image-container">
+            <img id="main-image" src="{{ url_for('static', filename='wall.jpg') }}" alt="Wall">
+        </div>
+        <label for="entryName">Grad, navn og beskrivelse af problem:</label>
+        <input type="text" id="entryName">
+        <button id="saveEntry" class="button">Gem problem</button>
+        <h2>Problemer:</h2>
+        <ul id="entriesList"></ul>
     </div>
-    <br>
-    <label for="entryName" style="font-size: 18px">Grad, navn og beskrivelse af problem:</label>
-    <input type="text" id="entryName" />
-    <button id="saveEntry" style="font-size: 18px;">Gem problem</button>
-    <h2 style="font-size: 35px">Problemer:</h2>
-    <ul id="entriesList"></ul>
     <script>
         $(document).ready(function () {
             var selectedObjects = [];
@@ -93,14 +223,14 @@
                     // Adjust positions when the window is resized
                     $(window).resize(adjustObjectPositions);
                 }).fail(function (xhr, status, error) {
-                    console.error('Error loading objects:', status, error); // Log error
+                    console.error('Error loading objects:', status, error);
                 });
             }
 
             function attachObjectClickHandlers() {
                 $('.object').on('click', function () {
                     var index = $(this).data('index');
-                    console.log('Object clicked: ' + index); // Log object click
+                    console.log('Object clicked: ' + index);
                     if ($(this).hasClass('selected')) {
                         $(this).removeClass('selected');
                         selectedObjects = selectedObjects.filter(obj => obj !== index);
@@ -108,14 +238,14 @@
                         $(this).addClass('selected');
                         selectedObjects.push(index);
                     }
-                    console.log('Selected objects:', selectedObjects); // Log selected objects
+                    console.log('Selected objects:', selectedObjects);
                 });
             }
 
             $('#saveEntry').on('click', function () {
                 var name = $('#entryName').val();
                 if (name) {
-                    console.log('Saving entry:', name); // Log saving entry
+                    console.log('Saving entry:', name);
                     $.ajax({
                         url: '/save_entry',
                         type: 'POST',
@@ -128,53 +258,52 @@
                             if (response.status === 'success') {
                                 alert('Problem gemt i databasen');
                                 loadEntries();
-                                $('#entry-name').text('Nyt problem'); // Reset text display
+                                $('#entry-name').text('Nyt problem');
                             }
                         },
                         error: function (xhr, status, error) {
-                            console.error('Error saving entry:', status, error); // Log error
+                            console.error('Error saving entry:', status, error);
                         }
                     });
                 } else {
                     alert('Please enter a name for the entry');
                 }
             });
-            
-	    function loadEntries() {
+
+            function loadEntries() {
                 $.get('/get_entries', function (entries) {
-                    console.log('Loading entries:', entries); // Log loading entries
-		    // Sort entries alphabetically by name (entry[1] is the name)
-		    entries.sort(function(a, b) {
-		    	return a[1].localeCompare(b[1]);
-		    });
+                    console.log('Loading entries:', entries);
+                    entries.sort(function(a, b) {
+                        return a[1].localeCompare(b[1]);
+                    });
                     $('#entriesList').empty();
                     entries.forEach(function (entry) {
-			$('#entriesList').append('<li data-id="' + entry[0] + '">' + entry[1] + ' <button class="editEntry">Rediger</button> <button class="deleteEntry">Slet</button></li>');
+                        $('#entriesList').append('<li data-id="' + entry[0] + '"><span class="entry-text">' + entry[1] + '</span><div class="entry-buttons"><button class="editEntry">Rediger</button><button class="deleteEntry">Slet</button></div></li>');
                     });
                 }).fail(function (xhr, status, error) {
-                    console.error('Error loading entries:', status, error); // Log error
+                    console.error('Error loading entries:', status, error);
                 });
             }
 
             $('#entriesList').on('click', 'li', function () {
                 var entryId = $(this).data('id');
-                console.log('Loading entry:', entryId); // Log loading entry
+                console.log('Loading entry:', entryId);
                 $.get('/entry/' + entryId, function (entry) {
                     var selected = entry[2].split(',').map(Number);
-                    $('.object').removeClass('selected'); // Clear previous selection
+                    $('.object').removeClass('selected');
                     selected.forEach(function (index) {
-                        $('.object').eq(index).addClass('selected'); // Highlight selected objects
+                        $('.object').eq(index).addClass('selected');
                     });
-                    $('#entry-name').text(entry[1]); // Update text display with entry name
+                    $('#entry-name').text(entry[1]);
                 }).fail(function (xhr, status, error) {
-                    console.error('Error loading entry:', status, error); // Log error
+                    console.error('Error loading entry:', status, error);
                 });
             });
 
             $('#entriesList').on('click', '.editEntry', function (event) {
-                event.stopPropagation(); // Prevent triggering the entry selection when clicking "Edit"
-                var entryId = $(this).parent().data('id');
-		var currentName = $(this).parent().text().replace(' Rediger Slet', '');
+                event.stopPropagation();
+                var entryId = $(this).closest('li').data('id');
+                var currentName = $(this).siblings('.entry-text').text();
 
                 var newName = prompt("Rediger beskrivelse af problem:", currentName);
                 if (newName && newName !== currentName) {
@@ -185,20 +314,20 @@
                         data: JSON.stringify({ name: newName }),
                         success: function (response) {
                             if (response.status === 'success') {
-                                loadEntries(); // Reload entries after update
+                                loadEntries();
                             }
                         },
                         error: function (xhr, status, error) {
-                            console.error('Error updating entry:', status, error); // Log error
+                            console.error('Error updating entry:', status, error);
                         }
                     });
                 }
             });
 
             $('#entriesList').on('click', '.deleteEntry', function (event) {
-                event.stopPropagation(); // Prevent triggering the entry selection when clicking "Delete"
-                var entryId = $(this).parent().data('id');
-                var entryName = $(this).parent().text().replace(' Rediger Slet', '');
+                event.stopPropagation();
+                var entryId = $(this).closest('li').data('id');
+                var entryName = $(this).siblings('.entry-text').text();
 
                 if (confirm("Er du sikker på du vil slette:\n\n" + entryName)) {
                     $.ajax({
@@ -206,13 +335,13 @@
                         type: 'POST',
                         success: function (response) {
                             if (response.status === 'success') {
-                                loadEntries(); // Reload entries after deletion
-                                $('#entry-name').text('Nyt problem'); // Reset entry name display
-                                $('.object').removeClass('selected'); // Clear any selected objects
+                                loadEntries();
+                                $('#entry-name').text('Nyt problem');
+                                $('.object').removeClass('selected');
                             }
                         },
                         error: function (xhr, status, error) {
-                            console.error('Error deleting entry:', status, error); // Log error
+                            console.error('Error deleting entry:', status, error);
                         }
                     });
                 }
@@ -221,12 +350,12 @@
             $('#clearSelection').on('click', function () {
                 $('.object').removeClass('selected');
                 selectedObjects = [];
-                console.log('Selection cleared'); // Log clearing selection
-                $('#entry-name').text('Nyt problem'); // Reset text display
+                console.log('Selection cleared');
+                $('#entry-name').text('Nyt problem');
             });
 
             loadObjects();
-	    loadEntries();
+            loadEntries();
         });
     </script>
     </div>
