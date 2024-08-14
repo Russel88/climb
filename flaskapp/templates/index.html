@@ -50,6 +50,7 @@
     	Start med hænderne på greb med to cirkler <br />
 	Slut med begge hænder på øverste greb
     </p> <!-- Text display area -->
+    <button id="createEntry" style="font-size: 20px; display: block; margin: 0 auto; ">Lav nyt problem</button>
     <div id="image-container">
         <img id="main-image" src="{{ url_for('static', filename='wall.jpg') }}" alt="Wall" />
     </div>
@@ -143,7 +144,6 @@
             loadEntries();
         });
     </script>
-    <button id="createEntry" style="font-size: 20px;">Lav nyt problem</button>
     </div>
 </body>
 </html>

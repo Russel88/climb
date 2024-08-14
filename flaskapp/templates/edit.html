@@ -156,6 +156,21 @@
                 });
             }
 
+            $('#entriesList').on('click', 'li', function () {
+                var entryId = $(this).data('id');
+                console.log('Loading entry:', entryId); // Log loading entry
+                $.get('/entry/' + entryId, function (entry) {
+                    var selected = entry[2].split(',').map(Number);
+                    $('.object').removeClass('selected'); // Clear previous selection
+                    selected.forEach(function (index) {
+                        $('.object').eq(index).addClass('selected'); // Highlight selected objects
+                    });
+                    $('#entry-name').text(entry[1]); // Update text display with entry name
+                }).fail(function (xhr, status, error) {
+                    console.error('Error loading entry:', status, error); // Log error
+                });
+            });
+
             $('#entriesList').on('click', '.editEntry', function (event) {
                 event.stopPropagation(); // Prevent triggering the entry selection when clicking "Edit"
                 var entryId = $(this).parent().data('id');
