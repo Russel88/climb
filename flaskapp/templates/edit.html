@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Krake Crag</title>
+    <style>
+        #image-container {
+            position: relative;
+            width: 100%; /* Ensure the container takes the full width of its parent */
+        }
+        #image-container img {
+            width: 800px;
+            height: auto; /* Maintain aspect ratio */
+            display: block; /* Remove extra space below the image */
+        }
+        .object {
+            position: absolute;
+            border-radius: 50%; /* Make the objects circular */
+            background-color: rgba(0, 0, 0, 0);
+            cursor: pointer;
+        }
+        .object.selected {
+            background-color: rgba(0, 255, 0, 0.7);
+            border: 2px solid rgba(0, 255, 0, 1); /* Change border color to indicate selection */
+        }
+	.content-wrapper {
+	    max-width: 800px; /* Adjust the width as needed */
+	    margin: 20px auto; /* Centers the div horizontally */
+	    padding: 20px; /* Adds space inside the div */
+	    border: 1px solid #ccc; /* Adds a light border */
+	    background-color: #f9f9f9; /* Optional: Light background for contrast */
+	    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Optional: Adds a subtle shadow for depth */
+	}
+        #entry-name {
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+	.center-text {
+    	    text-align: center;
+	}
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="content-wrapper">
+    <p style="font-size: 50px" class="center-text">Velkommen til Krakes klatrevæg</p>
+    <div id="entry-name" class="center-text">Nyt problem</div> <!-- Text display area -->
+    <p style="font-size: 16px" class="center-text">To cirkler ved startgreb</p> <!-- Text display area -->
+    <button id="clearSelection" style="display: block; margin: 0 auto; font-size: 18px;">Fjern selektion</button> <!-- New Button -->
+    <div id="image-container">
+        <img id="main-image" src="{{ url_for('static', filename='wall.jpg') }}" alt="Wall" />
+    </div>
+    <br>
+    <label for="entryName" style="font-size: 18px">Grad, navn og beskrivelse af problem:</label>
+    <input type="text" id="entryName" />
+    <button id="saveEntry" style="font-size: 18px;">Gem problem</button>
+    <h2 style="font-size: 35px">Problemer:</h2>
+    <ul id="entriesList"></ul>
+    <script>
+        $(document).ready(function () {
+            var selectedObjects = [];
+
+            function adjustObjectPositions() {
+                var img = $('#main-image');
+                var imgWidth = img.width();
+                var imgHeight = img.height();
+
+                $('.object').each(function () {
+                    var obj = $(this).data('object');
+                    $(this).css({
+                        top: (obj.top_percent / 100 * imgHeight) + 'px',
+                        left: (obj.left_percent / 100 * imgWidth) + 'px',
+                        width: (obj.width_percent / 100 * imgWidth) + 'px',
+                        height: (obj.height_percent / 100 * imgHeight) + 'px'
+                    });
+                });
+            }
+
+            function loadObjects() {
+                $.getJSON("{{ url_for('static', filename='objects.json') }}", function (data) {
+                    var img = $('#main-image');
+                    img.on('load', function () {
+                        data.forEach(function (obj, index) {
+                            var div = $('<div class="object"></div>').data('object', obj).data('index', index);
+                            $('#image-container').append(div);
+                        });
+                        adjustObjectPositions();
+                        attachObjectClickHandlers();
+                    }).each(function () {
+                        if (this.complete) $(this).trigger('load');
+                    });
+
+                    // Adjust positions when the window is resized
+                    $(window).resize(adjustObjectPositions);
+                }).fail(function (xhr, status, error) {
+                    console.error('Error loading objects:', status, error); // Log error
+                });
+            }
+
+            function attachObjectClickHandlers() {
+                $('.object').on('click', function () {
+                    var index = $(this).data('index');
+                    console.log('Object clicked: ' + index); // Log object click
+                    if ($(this).hasClass('selected')) {
+                        $(this).removeClass('selected');
+                        selectedObjects = selectedObjects.filter(obj => obj !== index);
+                    } else {
+                        $(this).addClass('selected');
+                        selectedObjects.push(index);
+                    }
+                    console.log('Selected objects:', selectedObjects); // Log selected objects
+                });
+            }
+
+            $('#saveEntry').on('click', function () {
+                var name = $('#entryName').val();
+                if (name) {
+                    console.log('Saving entry:', name); // Log saving entry
+                    $.ajax({
+                        url: '/save_entry',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            name: name,
+                            selected_objects: selectedObjects.join(',')
+                        }),
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                alert('Problem gemt i databasen');
+                                loadEntries();
+                                $('#entry-name').text('Nyt problem'); // Reset text display
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error saving entry:', status, error); // Log error
+                        }
+                    });
+                } else {
+                    alert('Please enter a name for the entry');
+                }
+            });
+            
+	    function loadEntries() {
+                $.get('/get_entries', function (entries) {
+                    console.log('Loading entries:', entries); // Log loading entries
+		    // Sort entries alphabetically by name (entry[1] is the name)
+		    entries.sort(function(a, b) {
+		    	return a[1].localeCompare(b[1]);
+		    });
+                    $('#entriesList').empty();
+                    entries.forEach(function (entry) {
+			$('#entriesList').append('<li data-id="' + entry[0] + '">' + entry[1] + ' <button class="editEntry">Rediger</button></li>');
+                    });
+                }).fail(function (xhr, status, error) {
+                    console.error('Error loading entries:', status, error); // Log error
+                });
+            }
+
+            $('#entriesList').on('click', '.editEntry', function (event) {
+                event.stopPropagation(); // Prevent triggering the entry selection when clicking "Edit"
+                var entryId = $(this).parent().data('id');
+                var currentName = $(this).parent().text().replace(' Rediger', '');
+
+                var newName = prompt("Rediger beskrivelse af problem:", currentName);
+                if (newName && newName !== currentName) {
+                    $.ajax({
+                        url: '/update_entry/' + entryId,
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ name: newName }),
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                loadEntries(); // Reload entries after update
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error updating entry:', status, error); // Log error
+                        }
+                    });
+                }
+            });
+
+            $('#clearSelection').on('click', function () {
+                $('.object').removeClass('selected');
+                selectedObjects = [];
+                console.log('Selection cleared'); // Log clearing selection
+                $('#entry-name').text('Nyt problem'); // Reset text display
+            });
+
+            loadObjects();
+	    loadEntries();
+        });
+    </script>
+    </div>
+</body>
+</html>
+
