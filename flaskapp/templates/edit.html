@@ -242,33 +242,42 @@
                 });
             }
 
-            $('#saveEntry').on('click', function () {
-                var name = $('#entryName').val();
-                if (name) {
-                    console.log('Saving entry:', name);
-                    $.ajax({
-                        url: '/save_entry',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({
-                            name: name,
-                            selected_objects: selectedObjects.join(',')
-                        }),
-                        success: function (response) {
-                            if (response.status === 'success') {
-                                alert('Problem gemt i databasen');
-                                loadEntries();
-                                $('#entry-name').text('Nyt problem');
-                            }
-                        },
-                        error: function (xhr, status, error) {
-                            console.error('Error saving entry:', status, error);
-                        }
-                    });
-                } else {
-                    alert('Please enter a name for the entry');
-                }
-            });
+	    // Regular expression for the required format
+	    var entryRegex = /^[345]\+?, |^[678][ABC]\+?, |^Projekt, /;
+
+	    function validateEntryText(text) {
+		return entryRegex.test(text);
+	    }
+
+	    $('#saveEntry').on('click', function () {
+		var name = $('#entryName').val();
+		if (!validateEntryText(name)) {
+		    alert("Tekst skal starte med sværhedsgrad eller med 'Projekt'");
+		    return;
+		}
+		// Proceed with saving the entry if validation passes
+		console.log('Saving entry:', name); // Log saving entry
+		$.ajax({
+		    url: '/save_entry',
+		    type: 'POST',
+		    contentType: 'application/json',
+		    data: JSON.stringify({
+			name: name,
+			selected_objects: selectedObjects.join(',')
+		    }),
+		    success: function (response) {
+			if (response.status === 'success') {
+			    alert('Problem gemt i databasen');
+			    loadEntries();
+			    $('#entry-name').text('Nyt problem'); // Reset text display
+			}
+		    },
+		    error: function (xhr, status, error) {
+			console.error('Error saving entry:', status, error); // Log error
+		    }
+		});
+	    });
+
 
             function loadEntries() {
                 $.get('/get_entries', function (entries) {
@@ -300,34 +309,41 @@
                 });
             });
 
-            $('#entriesList').on('click', '.editEntry', function (event) {
-                event.stopPropagation();
+	    $('#entriesList').on('click', '.editEntry', function (event) {
+		event.stopPropagation(); // Prevent triggering the entry selection when clicking "Edit"
                 var entryId = $(this).closest('li').data('id');
-                var currentName = $(this).siblings('.entry-text').text();
+                var currentName = $(this).closest('li').text().replace('RedigerSlet', '');
 
-                var newName = prompt("Rediger beskrivelse af problem:", currentName);
-                if (newName && newName !== currentName) {
-                    $.ajax({
-                        url: '/update_entry/' + entryId,
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({ name: newName }),
-                        success: function (response) {
-                            if (response.status === 'success') {
-                                loadEntries();
-                            }
-                        },
-                        error: function (xhr, status, error) {
-                            console.error('Error updating entry:', status, error);
-                        }
-                    });
-                }
-            });
+		var newName = prompt("Nyt navn til problem:", currentName);
+		if (!newName || newName === currentName) {
+		    return;
+		}
+
+		if (!validateEntryText(newName)) {
+		    alert("Tekst skal starte med sværhedsgrad eller med 'Projekt'");
+		    return;
+		}
+
+		$.ajax({
+		    url: '/update_entry/' + entryId,
+		    type: 'POST',
+		    contentType: 'application/json',
+		    data: JSON.stringify({ name: newName }),
+		    success: function (response) {
+			if (response.status === 'success') {
+			    loadEntries(); // Reload entries after update
+			}
+		    },
+		    error: function (xhr, status, error) {
+			console.error('Error updating entry:', status, error); // Log error
+		    }
+		});
+	    });
 
             $('#entriesList').on('click', '.deleteEntry', function (event) {
                 event.stopPropagation();
                 var entryId = $(this).closest('li').data('id');
-                var entryName = $(this).siblings('.entry-text').text();
+                var entryName = $(this).closest('li').text().replace('RedigerSlet', '');
 
                 if (confirm("Er du sikker på du vil slette:\n\n" + entryName)) {
                     $.ajax({
