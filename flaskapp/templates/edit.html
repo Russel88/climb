@@ -73,8 +73,7 @@
         }
 
         .object.selected {
-            background-color: rgba(0, 255, 0, 0.8);
-            border: 2px solid rgba(0, 255, 0, 0.8);
+            background-color: rgba(0, 255, 0, 0.75);
         }
 
         .button {
@@ -270,6 +269,9 @@
 			    alert('Problem gemt i databasen');
 			    loadEntries();
 			    $('#entry-name').text('Nyt problem'); // Reset text display
+			    $('#entryName').val(''); // Reset text box
+			    $('.object').removeClass('selected');
+			    selectedObjects = [];
 			}
 		    },
 		    error: function (xhr, status, error) {
@@ -304,6 +306,10 @@
                         $('.object').eq(index).addClass('selected');
                     });
                     $('#entry-name').text(entry[1]);
+		    // Scroll to just below the first header
+        	    $('html, body').animate({
+            		scrollTop: $('h1').offset().top + $('h1').outerHeight()
+        	    }, 500); // 500 milliseconds for smooth scroll
                 }).fail(function (xhr, status, error) {
                     console.error('Error loading entry:', status, error);
                 });
@@ -368,6 +374,7 @@
                 selectedObjects = [];
                 console.log('Selection cleared');
                 $('#entry-name').text('Nyt problem');
+		$('#entryName').val('');
             });
 
             loadObjects();
