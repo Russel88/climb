@@ -1,6 +1,6 @@
 __pycache__/
 ._flaskapp
-.wsgy.py
+._wsgy.py
 flaskapp/.*
 flaskapp/static/.*
 flaskapp/templates/.*
