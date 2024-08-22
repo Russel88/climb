@@ -1,0 +1,6 @@
+__pycache__/
+._flaskapp
+.wsgy.py
+flaskapp/.*
+flaskapp/static/.*
+flaskapp/templates/.*
