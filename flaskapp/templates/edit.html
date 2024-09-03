@@ -175,10 +175,11 @@
         <h1 class="center-text">Velkommen til Krakes klatrevæg</h1>
         <div id="entry-name" class="center-text">Nyt problem</div>
         <p class="center-text">To cirkler ved startgreb</p>
-        <button id="clearSelection" class="button">Fjern selektion</button>
+	<button id="toggleImage" class="button">Skift til sort/hvid</button>
         <div id="image-container">
-            <img id="main-image" src="{{ url_for('static', filename='wall.jpg') }}" alt="Wall">
+            <img id="main-image" src="{{ url_for('static', filename='wallc.jpg') }}" alt="Wall">
         </div>
+        <button id="clearSelection" class="button">Fjern selektion</button>
         <label for="entryName">Grad, navn og beskrivelse af problem:</label>
         <input type="text" id="entryName">
         <button id="saveEntry" class="button">Gem problem</button>
@@ -188,6 +189,20 @@
     <script>
         $(document).ready(function () {
             var selectedObjects = [];
+	    var colorImage = "{{ url_for('static', filename='wallc.jpg') }}";
+            var bwImage = "{{ url_for('static', filename='wall.jpg') }}";
+            var isColor = true;
+
+            $('#toggleImage').on('click', function () {
+                if (isColor) {
+                    $('#main-image').attr('src', bwImage);
+                    $(this).text('Skift til farve');
+                } else {
+                    $('#main-image').attr('src', colorImage);
+                    $(this).text('Skift til sort/hvid');
+                }
+                isColor = !isColor;
+            });
 
             function adjustObjectPositions() {
                 var img = $('#main-image');

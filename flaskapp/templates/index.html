@@ -64,6 +64,18 @@
             border-radius: 8px;
         }
 
+	@keyframes pulsate {
+	    0% {
+		transform: scale(1);
+	    }
+	    25% {
+		transform: scale(3); /* Scale up to twice the original size */
+	    }
+	    100% {
+		transform: scale(1); /* Scale back to the original size */
+	    }
+	}
+
         .object {
             position: absolute;
             border-radius: 50%;
@@ -72,7 +84,8 @@
         }
 
         .object.selected {
-            background-color: rgba(0, 255, 0, 0.75);
+            background-color: rgba(0, 255, 0, 0.5);
+	    animation: pulsate 5s infinite; /* Apply pulsate animation */
         }
 
         .button {
@@ -126,16 +139,32 @@
             Start med hænderne på greb med to cirkler<br>
             Slut med begge hænder på øverste greb
         </p>
-        <button id="createEntry" class="button">Lav nyt problem</button>
+	<button id="toggleImage" class="button">Skift til sort/hvid</button>
         <div id="image-container">
-            <img id="main-image" src="{{ url_for('static', filename='wall.jpg') }}" alt="Wall">
+            <img id="main-image" src="{{ url_for('static', filename='wallc.jpg') }}" alt="Wall">
         </div>
         <button id="clearSelection" class="button">Fjern selektion</button>
+        <button id="createEntry" class="button">Lav nyt problem</button>
         <h2>Problemer:</h2>
         <ul id="entriesList"></ul>
     </div>
     <script>
         $(document).ready(function () {
+
+	    var colorImage = "{{ url_for('static', filename='wallc.jpg') }}";
+            var bwImage = "{{ url_for('static', filename='wall.jpg') }}";
+            var isColor = true;
+
+            $('#toggleImage').on('click', function () {
+                if (isColor) {
+                    $('#main-image').attr('src', bwImage);
+                    $(this).text('Skift til farve');
+                } else {
+                    $('#main-image').attr('src', colorImage);
+                    $(this).text('Skift til sort/hvid');
+                }
+                isColor = !isColor;
+            });
 
             function adjustObjectPositions() {
                 var img = $('#main-image');
