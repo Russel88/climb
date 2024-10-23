@@ -76,6 +76,7 @@ p {
 
 .object.selected {
     background-color: rgba(0, 255, 0, 0.5);
+    animation: pulsate 5s infinite; /* Apply pulsate animation */
 }
 
 .button {
