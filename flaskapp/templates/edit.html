@@ -23,6 +23,12 @@
         .image-container {
             position: relative;
         }
+        .object-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
     </style>
 </head>
 <body>
@@ -256,6 +262,9 @@
 		$('#saveEntry')
 		    .data('editing', entryId)
 		    .text('Opdater problem');
+
+		// Highlight entry on image and scroll to top
+		highlightEntry(entry);
 	    }).fail(function() {
 		alert('Kunne ikke hente problem. Prøv igen.');
 	    });
