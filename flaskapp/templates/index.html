@@ -103,6 +103,7 @@
             function loadEntries() {
                 $.get('/get_entries', function(entries) {
                     $('#entriesList').empty();
+                    entries.sort((a, b) => a[1].localeCompare(b[1]));
                     entries.forEach(entry => {
                         $('#entriesList').append(`<li data-id="${entry[0]}">${entry[1]}</li>`);
                     });
