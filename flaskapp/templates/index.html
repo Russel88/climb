@@ -1,15 +1,35 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="da">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krake Crag</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-    .object {
-	pointer-events: none;
-    }
+        .object {
+            pointer-events: none;
+            position: absolute;
+            border: none;
+        }
+        .wall-image {
+            display: none;
+            max-width: 100%;
+            position: relative;
+        }
+        .active {
+            display: block;
+        }
+        .image-container {
+            position: relative;
+        }
+        .object-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
     </style>
 </head>
 <body>
@@ -20,108 +40,113 @@
             Start med hænderne på greb med to cirkler<br>
             Slut med begge hænder på øverste greb
         </p>
-	<button id="toggleImage" class="button">Skift til sort/hvid</button>
-        <div id="image-container">
-            <img id="main-image" src="{{ url_for('static', filename='wallc.jpg') }}" alt="Wall">
+        <div id="wall-toggle-wrapper" class="buttons">
+            <button class="wall-toggle" data-wall="1">Venstre væg</button>
+	    <button class="wall-toggle" data-wall="2">Højre væg</button>
         </div>
+
+        <div class="image-container">
+            <img id="wall1" class="wall-image" data-wall="1" src="{{ url_for('static', filename='wallv.jpg') }}">
+            <div class="object-layer" data-wall="1"></div>
+            <img id="wall2" class="wall-image" data-wall="2" src="{{ url_for('static', filename='wallh.jpg') }}">
+            <div class="object-layer" data-wall="2"></div>
+        </div>
+
         <button id="clearSelection" class="button">Fjern selektion</button>
         <button id="createEntry" class="button">Lav nyt problem</button>
+
         <h2>Problemer:</h2>
         <ul id="entriesList"></ul>
-    </div>
-    <script>
-        $(document).ready(function () {
 
-	    var colorImage = "{{ url_for('static', filename='wallc.jpg') }}";
-            var bwImage = "{{ url_for('static', filename='wall.jpg') }}";
-            var isColor = true;
+        <script>
+            let objectsData = {};
 
-            $('#toggleImage').on('click', function () {
-                if (isColor) {
-                    $('#main-image').attr('src', bwImage);
-                    $(this).text('Skift til farve');
-                } else {
-                    $('#main-image').attr('src', colorImage);
-                    $(this).text('Skift til sort/hvid');
-                }
-                isColor = !isColor;
-            });
+            function loadObjects(wall) {
+                $.getJSON(`{{ url_for('static', filename='objects') }}${wall}.json`, function(data) {
+                    objectsData[`wall${wall}`] = data;
+                    const layer = $(`.object-layer[data-wall="${wall}"]`);
+                    data.forEach((obj, index) => {
+                        const div = $('<div class="object"></div>')
+                            .data('object', obj)
+                            .data('index', index)
+                            .attr('data-wall', wall);
+                        layer.append(div);
+                    });
+                    adjustPositions(wall);
+                });
+            }
 
-            function adjustObjectPositions() {
-                var img = $('#main-image');
-                var imgWidth = img.width();
-                var imgHeight = img.height();
-
-                $('.object').each(function () {
-                    var obj = $(this).data('object');
+            function adjustPositions(wall) {
+                const img = $(`#wall${wall}`);
+                const width = img.width();
+                const height = img.height();
+                $(`.object[data-wall="${wall}"]`).each(function() {
+                    const obj = $(this).data('object');
                     $(this).css({
-                        top: (obj.top_percent / 100 * imgHeight) + 'px',
-                        left: (obj.left_percent / 100 * imgWidth) + 'px',
-                        width: (obj.width_percent / 100 * imgWidth) + 'px',
-                        height: (obj.height_percent / 100 * imgHeight) + 'px'
+                        top: (obj.top_percent / 100 * height) + 'px',
+                        left: (obj.left_percent / 100 * width) + 'px',
+                        width: (obj.width_percent / 100 * width) + 'px',
+                        height: (obj.height_percent / 100 * height) + 'px',
+                        position: 'absolute'
                     });
                 });
             }
 
-            function loadObjects() {
-                $.getJSON("{{ url_for('static', filename='objects.json') }}", function (data) {
-                    var img = $('#main-image');
-                    img.on('load', function () {
-                        data.forEach(function (obj, index) {
-                            var div = $('<div class="object"></div>').data('object', obj).data('index', index);
-                            $('#image-container').append(div);
-                        });
-                        adjustObjectPositions();
-                    }).each(function () {
-                        if (this.complete) $(this).trigger('load');
-                    });
-
-                    // Adjust positions when the window is resized
-                    $(window).resize(adjustObjectPositions);
-                }).fail(function (xhr, status, error) {
-                    console.error('Error loading objects:', status, error);
-                });
-            }
-
-            $('#clearSelection').on('click', function () {
-                $('.object').removeClass('selected');
-                selectedObjects = [];
-                console.log('Selection cleared');
-                $('#entry-name').text('Vælg et problem fra listen i bunden');
+            $(document).on('click', '.wall-toggle', function () {
+                const wall = $(this).data('wall');
+                $('.wall-image').removeClass('active');
+                $(`#wall${wall}`).addClass('active');
+                $('.object-layer').hide();
+                $(`.object-layer[data-wall="${wall}"]`).show();
             });
 
             function loadEntries() {
-                $.get('/get_entries', function (entries) {
-                    console.log('Loading entries:', entries);
-                    entries.sort(function(a, b) {
-                        return a[1].localeCompare(b[1]);
-                    });
+                $.get('/get_entries', function(entries) {
                     $('#entriesList').empty();
-                    entries.forEach(function (entry) {
-                        $('#entriesList').append('<li data-id="' + entry[0] + '">' + entry[1] + '</li>');
+                    entries.forEach(entry => {
+                        $('#entriesList').append(`<li data-id="${entry[0]}">${entry[1]}</li>`);
                     });
-                }).fail(function (xhr, status, error) {
-                    console.error('Error loading entries:', status, error);
                 });
             }
 
             $('#entriesList').on('click', 'li', function () {
-                var entryId = $(this).data('id');
-                console.log('Loading entry:', entryId);
-                $.get('/entry/' + entryId, function (entry) {
-                    var selected = entry[2].split(',').map(Number);
+                const entryId = $(this).data('id');
+                $.get(`/entry/${entryId}`, function(entry) {
+                    const selections = entry[2];
                     $('.object').removeClass('selected');
-                    selected.forEach(function (index) {
-                        $('.object').eq(index).addClass('selected');
-                    });
-                    $('#entry-name').text(entry[1]);
 
-		    // Scroll to just below the first header
-        	    $('html, body').animate({
-            		scrollTop: $('h1').offset().top + $('h1').outerHeight()
-        	    }, 500); // 500 milliseconds for smooth scroll
-                }).fail(function (xhr, status, error) {
-                    console.error('Error loading entry:', status, error);
+                    const wallsUsed = [];
+                    if (selections.wall1.length > 0) {
+                        selections.wall1.forEach(index => {
+                            $(`.object[data-wall="1"]`).eq(index).addClass('selected');
+                        });
+                        wallsUsed.push(1);
+                    }
+                    if (selections.wall2.length > 0) {
+                        selections.wall2.forEach(index => {
+                            $(`.object[data-wall="2"]`).eq(index).addClass('selected');
+                        });
+                        wallsUsed.push(2);
+                    }
+
+                    if (wallsUsed.length === 1) {
+                        $('#wall-toggle-wrapper').hide();
+                        $('.wall-image').removeClass('active');
+                        $(`#wall${wallsUsed[0]}`).addClass('active');
+                        $('.object-layer').hide();
+                        $(`.object-layer[data-wall="${wallsUsed[0]}"]`).show();
+                    } else {
+                        $('#wall-toggle-wrapper').show();
+                        $('.wall-image').removeClass('active');
+                        $('#wall1').addClass('active');
+                        $('.object-layer').hide();
+                        $(`.object-layer[data-wall="1"]`).show();
+                    }
+
+                    $('#entry-name').text(entry[1]);
+                    $('html, body').animate({
+                        scrollTop: $('h1').offset().top + $('h1').outerHeight()
+                    }, 500);
                 });
             });
 
@@ -129,10 +154,21 @@
                 window.location.href = 'create_climb';
             });
 
-            loadObjects();
-            loadEntries();
-        });
-    </script>
+            $('#clearSelection').on('click', function () {
+                $('.object').removeClass('selected');
+                $('#entry-name').text('Vælg et problem fra listen i bunden');
+                $('#wall-toggle-wrapper').hide();
+            });
+
+            $(document).ready(function () {
+                loadObjects(1);
+                loadObjects(2);
+                $('#wall1').addClass('active');
+                $(`.object-layer[data-wall="1"]`).show();
+                loadEntries();
+            });
+        </script>
+    </div>
 </body>
 </html>
 

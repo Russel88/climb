@@ -1,0 +1,113 @@
+{
+  "entries": {
+    "1": {
+      "wednesday": [
+        {
+          "exercise": "Deadlift",
+          "sets": [
+            {
+              "target_reps": 5,
+              "intensity": 0.4,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.5,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.6,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.65,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.75,
+              "done_reps": "1"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.85,
+              "done_reps": "1"
+            }
+          ]
+        },
+        {
+          "exercise": "Overhead press",
+          "sets": [
+            {
+              "target_reps": 5,
+              "intensity": 0.4,
+              "done_reps": 0
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.5,
+              "done_reps": 0
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.6,
+              "done_reps": 0
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.65,
+              "done_reps": 0
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.75,
+              "done_reps": 0
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.85,
+              "done_reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Chin-up",
+          "sets": [
+            {
+              "target_reps": 5,
+              "intensity": 0,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.4,
+              "done_reps": 0
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.6,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.7,
+              "done_reps": "5"
+            },
+            {
+              "target_reps": 5,
+              "intensity": 0.8,
+              "done_reps": "5"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

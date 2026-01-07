@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Log Summary</title>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; margin: 0; padding: 0; }
+    .container { max-width: 800px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 0 12px rgba(0,0,0,0.1); }
+    h1 { text-align: center; margin-bottom: 20px; }
+    .week-card { background: #f4f4f4; border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+    .day-card { margin-bottom: 10px; }
+    h2, h3 { margin: 5px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+    th, td { border: 1px solid #ccc; padding: 4px 6px; font-size: 14px; text-align: left; }
+    th { background: #e2e2e2; }
+    .back { display: inline-block; margin-top: 10px; text-decoration: none; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Log Summary (Last Cycle)</h1>
+    <div id="summary"></div>
+    <a href="/personal" class="back">← Back to Training</a>
+  </div>
+
+<script>
+async function loadSummary() {
+  const res = await fetch("/api/log_summary");
+  const data = await res.json();
+  const program = data.program;
+  const logs = data.logs.entries || {};
+
+  // Fetch weights separately
+  const weightsRes = await fetch("/api/weights");
+  const totalWeights = await weightsRes.json();
+
+  const container = document.getElementById("summary");
+  container.innerHTML = "";
+
+  for (let [week, days] of Object.entries(program.weeks)) {
+    const weekDiv = document.createElement("div");
+    weekDiv.className = "week-card";
+
+    const weekTitle = document.createElement("h2");
+    weekTitle.innerText = "Week " + week;
+    weekDiv.appendChild(weekTitle);
+
+    for (let [day, exercises] of Object.entries(days)) {
+      const dayDiv = document.createElement("div");
+      dayDiv.className = "day-card";
+
+      const dayTitle = document.createElement("h3");
+      dayTitle.innerText = day.charAt(0).toUpperCase() + day.slice(1);
+      dayDiv.appendChild(dayTitle);
+
+      exercises.forEach((ex, i) => {
+        const exDiv = document.createElement("div");
+        exDiv.style.marginBottom = "12px"; // spacing between exercises
+
+        const exTitle = document.createElement("h4");
+        exTitle.innerText = ex.exercise;
+        exTitle.style.margin = "4px 0";
+        exDiv.appendChild(exTitle);
+
+        const table = document.createElement("table");
+        const header = document.createElement("tr");
+        header.innerHTML = "<th>Set</th><th>Planned Reps</th><th>Weight</th><th>Done</th>";
+        table.appendChild(header);
+
+        const totalWeight = totalWeights[ex.exercise] || 0;
+
+        ex.sets.forEach((set, j) => {
+          const row = document.createElement("tr");
+          const calculatedWeight = Math.round(set.intensity * totalWeight);
+          const loggedSet = logs[week]?.[day]?.[i]?.sets?.[j];
+          const doneReps = loggedSet ? loggedSet.done_reps : "-";
+
+          row.innerHTML = `
+            <td>${j+1}</td>
+            <td>${set.reps}</td>
+            <td>${calculatedWeight}</td>
+            <td>${doneReps}</td>
+          `;
+          table.appendChild(row);
+        });
+
+        exDiv.appendChild(table);
+        dayDiv.appendChild(exDiv);
+      });
+
+      weekDiv.appendChild(dayDiv);
+    }
+
+    container.appendChild(weekDiv);
+  }
+}
+
+
+loadSummary();
+</script>
+</body>
+</html>
+

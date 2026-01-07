@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Personal Training Tracker</title>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; margin: 0; padding: 0; }
+    .container { max-width: 800px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 0 12px rgba(0,0,0,0.1); }
+    h1 { text-align: center; margin-bottom: 20px; }
+    .selectors { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    select, button { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+    button { cursor: pointer; background-color: #4CAF50; color: white; border: none; }
+    button:hover { background-color: #45a049; }
+    .exercise-card { background: #f4f4f4; border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+    .exercise-card h3 { margin: 0 0 10px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+    th { background: #e2e2e2; }
+    input[type="number"] { width: 60px; }
+    .action-buttons { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    .back { text-decoration: none; color: #555; margin-top: 10px; display: inline-block; }
+    select option.logged {
+    background-color: #c8facc; /* light green */
+    font-weight: bold;
+    }
+     .set-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 4px 0;
+    padding: 4px 6px;
+    background: #f9f9f9;
+    border-radius: 6px;
+  }
+
+  .set-row input {
+    width: 60px;
+    padding: 2px 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .exercise {
+    margin-bottom: 16px;
+    padding: 10px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .exercise h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #333;
+  } 
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Training Tracker</h1>
+
+    <div class="selectors">
+      <label>Week:</label>
+      <select id="week"></select>
+
+      <label>Day:</label>
+      <select id="day">
+        <option value="wednesday">Wednesday</option>
+        <option value="saturday">Saturday</option>
+      </select>
+
+      <button onclick="loadWorkout()">Load Workout</button>
+    </div>
+
+    <div id="workout"></div>
+
+    <div class="action-buttons">
+      <button id="saveBtn" onclick="savePerformance()" style="display:none;">Save Performance</button>
+      <button onclick="resetCycle()">Proceed to Next Cycle</button>
+      <button onclick="window.location.href='/personal/log_summary'">View Log Summary</button>
+      <a href="/personal/edit_program" class="back">Edit Program / Weights</a>
+    </div>
+  </div>
+
+<script>
+let program = {};
+let logs = {};
+let totalWeights = {};
+
+// --- Status helpers ---
+const statusEmoji = { none: "⚪", partial: "🟡", full: "🟢" };
+
+function getDayStatus(week, day) {
+  const entries = logs.entries || {};
+  const planned = program.weeks?.[week]?.[day] || [];
+  if (!planned.length) return "none";
+
+  let plannedTotal = 0, loggedTotal = 0;
+  planned.forEach((ex, i) => {
+    ex.sets.forEach((_, j) => {
+      plannedTotal++;
+      const lr = entries[week]?.[day]?.[i]?.sets?.[j]?.done_reps;
+      if (lr !== undefined && lr !== null && String(lr) !== "") loggedTotal++;
+    });
+  });
+
+  if (loggedTotal === 0) return "none";
+  if (loggedTotal < plannedTotal) return "partial";
+  return "full";
+}
+
+function getWeekStatus(week) {
+  const days = program.weeks?.[week] ? Object.keys(program.weeks[week]) : [];
+  if (!days.length) return "none";
+
+  let anyLogged = false, allFull = true;
+  for (const d of days) {
+    const s = getDayStatus(week, d);
+    if (s !== "none") anyLogged = true;
+    if (s !== "full") allFull = false;
+  }
+  if (!anyLogged) return "none";
+  return allFull ? "full" : "partial";
+}
+
+// --- Renderers for the dropdowns ---
+function renderWeekOptions(preserve = true) {
+  const weekSel = document.getElementById("week");
+  const prev = preserve ? weekSel.value : null;
+  weekSel.innerHTML = "";
+
+  for (const w of Object.keys(program.weeks)) {
+    const status = getWeekStatus(w);
+    const opt = document.createElement("option");
+    opt.value = w;
+    opt.text = `${statusEmoji[status]} Week ${w}`;
+    weekSel.appendChild(opt);
+  }
+
+  if (prev && [...weekSel.options].some(o => o.value === prev)) {
+    weekSel.value = prev;
+  }
+}
+
+function renderDayOptions() {
+  const week = document.getElementById("week").value;
+  const daySel = document.getElementById("day");
+  for (let i = 0; i < daySel.options.length; i++) {
+    const opt = daySel.options[i];
+    const day = opt.value;
+    const status = getDayStatus(week, day);
+    const label = day.charAt(0).toUpperCase() + day.slice(1);
+    opt.text = `${statusEmoji[status]} ${label}`;
+  }
+}
+
+
+async function init() {
+  program = await (await fetch("/api/program")).json();
+  logs = await (await fetch("/api/log")).json();
+	totalWeights = await (await fetch("/api/weights")).json();
+
+  // Populate weeks dropdown
+  renderWeekOptions(false);
+  renderDayOptions();
+  document.getElementById("week").addEventListener("change", renderDayOptions);
+}
+
+async function loadWorkout() {
+  let week = document.getElementById("week").value;
+  let day = document.getElementById("day").value;
+  let workout = program.weeks[week]?.[day] || [];
+
+  let logged = logs.entries?.[week]?.[day] || [];
+  let container = document.getElementById("workout");
+  container.innerHTML = "";
+
+  if (workout.length === 0) {
+    container.innerHTML = "<p>No workout scheduled.</p>";
+    document.getElementById("saveBtn").style.display = "none";
+    return;
+  }
+
+  workout.forEach((ex, i) => {
+    let div = document.createElement("div");
+    div.className = "exercise";
+
+    let title = document.createElement("h3");
+    title.innerText = ex.exercise;
+    div.appendChild(title);
+
+    let ul = document.createElement("ul");
+
+    let totalWeight = totalWeights[ex.exercise] || 0;
+
+    ex.sets.forEach((set, j) => {
+      const li = document.createElement("li");
+      const calculatedWeight = Math.round(set.intensity * totalWeight);
+
+      const loggedSet = logged?.[i]?.sets?.[j];
+      const doneReps = loggedSet ? loggedSet.done_reps : "";
+
+	li.innerHTML = `
+	  <div class="set-row">
+	    <span class="planned">
+	      Planned: ${set.reps} reps @ ${calculatedWeight} kg
+	    </span>
+	    <span class="done">
+	      Done: <input type="number" id="reps_${i}_${j}"
+			   value="${doneReps}" min="0">
+	    </span>
+	  </div>
+	`;
+
+      ul.appendChild(li);
+    });
+
+    div.appendChild(ul);
+    container.appendChild(div);
+  });
+
+  // Always allow saving (can overwrite or fill missing sets)
+  document.getElementById("saveBtn").style.display = "block";
+}
+
+
+async function savePerformance() {
+  const week = document.getElementById("week").value;
+  const day = document.getElementById("day").value;
+  const workout = program.weeks[week]?.[day] || [];
+
+  const exercises = workout.map((ex, i) => ({
+    exercise: ex.exercise,
+    sets: ex.sets.map((set, j) => ({
+      target_reps: set.reps,
+      intensity: set.intensity,
+      done_reps: document.getElementById(`reps_${i}_${j}`)?.value || 0
+    }))
+  }));
+
+  const res = await fetch("/api/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ week, day, exercises })
+  });
+
+  const data = await res.json();
+  if (data.status === "saved") {
+    alert("Performance saved!");
+    logs = await (await fetch("/api/log")).json();
+    renderWeekOptions();   // preserves current selection
+    renderDayOptions();
+    loadWorkout();
+  } else {
+    alert("Error saving performance");
+  }
+}
+
+async function resetCycle() {
+  if (!confirm("Proceed to next cycle? This will clear your log.")) return;
+
+  await fetch("/api/reset_cycle", { method: "POST" });
+  window.location.href = "/personal/edit_program";
+}
+
+init();
+</script>
+</body>
+</html>
+

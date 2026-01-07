@@ -4,241 +4,227 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krake Crag</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-    .object {
-	cursor: pointer;
-    }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .object {
+            cursor: pointer;
+            position: absolute;
+            border: none;
+        }
+        .wall-image {
+            display: none;
+            max-width: 100%;
+            position: relative;
+        }
+        .active {
+            display: block;
+        }
+        .image-container {
+            position: relative;
+        }
+    </style>
 </head>
 <body>
     <div class="content-wrapper">
         <h1 class="center-text">Velkommen til Krakes klatrevæg</h1>
         <div id="entry-name" class="center-text">Nyt problem</div>
         <p class="center-text">To cirkler ved startgreb</p>
-	<button id="toggleImage" class="button">Skift til sort/hvid</button>
-        <div id="image-container">
-            <img id="main-image" src="{{ url_for('static', filename='wallc.jpg') }}" alt="Wall">
+        <div>
+            <button class="button wall-toggle" data-wall="1">Venstre væg</button>
+            <button class="button wall-toggle" data-wall="2">Højre væg</button>
         </div>
+
+        <div class="image-container">
+            <img id="wall1" class="wall-image" data-wall="1" src="{{ url_for('static', filename='wallv.jpg') }}">
+            <div class="object-layer" data-wall="1"></div>
+            <img id="wall2" class="wall-image" data-wall="2" src="{{ url_for('static', filename='wallh.jpg') }}">
+            <div class="object-layer" data-wall="2"></div>
+        </div>
+
         <button id="clearSelection" class="button">Fjern selektion</button>
         <label for="entryName">Grad, navn og beskrivelse af problem:</label>
         <input type="text" id="entryName">
         <button id="saveEntry" class="button">Gem problem</button>
+
         <h2>Problemer:</h2>
         <ul id="entriesList"></ul>
-    </div>
-    <script>
-        $(document).ready(function () {
-            var selectedObjects = [];
-	    var colorImage = "{{ url_for('static', filename='wallc.jpg') }}";
-            var bwImage = "{{ url_for('static', filename='wall.jpg') }}";
-            var isColor = true;
 
-            $('#toggleImage').on('click', function () {
-                if (isColor) {
-                    $('#main-image').attr('src', bwImage);
-                    $(this).text('Skift til farve');
-                } else {
-                    $('#main-image').attr('src', colorImage);
-                    $(this).text('Skift til sort/hvid');
-                }
-                isColor = !isColor;
-            });
+        <script>
+            let selectedObjects = { wall1: [], wall2: [] };
 
-            function adjustObjectPositions() {
-                var img = $('#main-image');
-                var imgWidth = img.width();
-                var imgHeight = img.height();
+            function loadObjects(wall) {
+                $.getJSON(`{{ url_for('static', filename='objects') }}${wall}.json`, function(data) {
+                    const layer = $(`.object-layer[data-wall="${wall}"]`);
+                    data.forEach((obj, index) => {
+                        const div = $('<div class="object"></div>')
+                            .data('object', obj)
+                            .data('index', index)
+                            .attr('data-wall', wall);
+                        layer.append(div);
+                    });
+                    adjustPositions(wall);
+                    attachHandlers(wall);
+                });
+            }
 
-                $('.object').each(function () {
-                    var obj = $(this).data('object');
+            function adjustPositions(wall) {
+                const img = $(`#wall${wall}`);
+                const width = img.width();
+                const height = img.height();
+                $(`.object[data-wall="${wall}"]`).each(function() {
+                    const obj = $(this).data('object');
                     $(this).css({
-                        top: (obj.top_percent / 100 * imgHeight) + 'px',
-                        left: (obj.left_percent / 100 * imgWidth) + 'px',
-                        width: (obj.width_percent / 100 * imgWidth) + 'px',
-                        height: (obj.height_percent / 100 * imgHeight) + 'px'
+                        top: (obj.top_percent / 100 * height) + 'px',
+                        left: (obj.left_percent / 100 * width) + 'px',
+                        width: (obj.width_percent / 100 * width) + 'px',
+                        height: (obj.height_percent / 100 * height) + 'px'
                     });
                 });
             }
 
-            function loadObjects() {
-                $.getJSON("{{ url_for('static', filename='objects.json') }}", function (data) {
-                    var img = $('#main-image');
-                    img.on('load', function () {
-                        data.forEach(function (obj, index) {
-                            var div = $('<div class="object"></div>').data('object', obj).data('index', index);
-                            $('#image-container').append(div);
-                        });
-                        adjustObjectPositions();
-                        attachObjectClickHandlers();
-                    }).each(function () {
-                        if (this.complete) $(this).trigger('load');
-                    });
-
-                    // Adjust positions when the window is resized
-                    $(window).resize(adjustObjectPositions);
-                }).fail(function (xhr, status, error) {
-                    console.error('Error loading objects:', status, error);
-                });
-            }
-
-            function attachObjectClickHandlers() {
-                $('.object').on('click', function () {
-                    var index = $(this).data('index');
-                    console.log('Object clicked: ' + index);
+            function attachHandlers(wall) {
+                $(`.object[data-wall="${wall}"]`).on('click', function () {
+                    const index = $(this).data('index');
+                    const key = `wall${wall}`;
                     if ($(this).hasClass('selected')) {
                         $(this).removeClass('selected');
-                        selectedObjects = selectedObjects.filter(obj => obj !== index);
+                        selectedObjects[key] = selectedObjects[key].filter(i => i !== index);
                     } else {
                         $(this).addClass('selected');
-                        selectedObjects.push(index);
+                        selectedObjects[key].push(index);
                     }
-                    console.log('Selected objects:', selectedObjects);
                 });
             }
 
-	    // Regular expression for the required format
-	    var entryRegex = /^[345]\+?, |^[678][ABC]\+?, |^Projekt, /;
+            $(document).on('click', '.wall-toggle', function () {
+                const wall = $(this).data('wall');
+                $('.wall-image').removeClass('active');
+                $(`#wall${wall}`).addClass('active');
+                $('.object-layer').hide();
+                $(`.object-layer[data-wall="${wall}"]`).show();
+            });
 
-	    function validateEntryText(text) {
-		return entryRegex.test(text);
+            $('#clearSelection').on('click', function () {
+                $('.object').removeClass('selected');
+                selectedObjects = { wall1: [], wall2: [] };
+                $('#entry-name').text('Nyt problem');
+                $('#entryName').val('');
+            });
+
+	$('#saveEntry').on('click', function () {
+	    const name = $('#entryName').val();
+	    const editingId = $(this).data('editing');
+
+	    const entryRegex = /^[345]\+?, |^[678][ABC]\+?, |^Projekt, /;
+	    if (!entryRegex.test(name)) {
+		alert("Tekst skal starte med sværhedsgrad eller med 'Projekt'");
+		return;
 	    }
 
-	    $('#saveEntry').on('click', function () {
-		var name = $('#entryName').val();
-		if (!validateEntryText(name)) {
-		    alert("Tekst skal starte med sværhedsgrad eller med 'Projekt'");
-		    return;
-		}
-		// Proceed with saving the entry if validation passes
-		console.log('Saving entry:', name); // Log saving entry
+	    if (editingId) {
+		// update existing entry
+		$.ajax({
+		    url: `/update_entry/${editingId}`,
+		    type: 'POST',
+		    contentType: 'application/json',
+		    data: JSON.stringify({ name: name }),
+		    success: function (response) {
+			if (response.status === 'success') {
+			    alert('Problem opdateret');
+			    $('#saveEntry').removeData('editing').text('Gem problem');
+			    loadEntries();
+			}
+		    }
+		});
+		$('.object').removeClass('selected');
+                selectedObjects = { wall1: [], wall2: [] };
+                $('#entry-name').text('Nyt problem');
+                $('#entryName').val('');
+	    } else {
+		// save new entry
 		$.ajax({
 		    url: '/save_entry',
 		    type: 'POST',
 		    contentType: 'application/json',
 		    data: JSON.stringify({
 			name: name,
-			selected_objects: selectedObjects.join(',')
+			selected_objects: selectedObjects
 		    }),
 		    success: function (response) {
 			if (response.status === 'success') {
 			    alert('Problem gemt i databasen');
 			    loadEntries();
-			    $('#entry-name').text('Nyt problem'); // Reset text display
-			    $('#entryName').val(''); // Reset text box
+			    $('#entry-name').text('Nyt problem');
+			    $('#entryName').val('');
 			    $('.object').removeClass('selected');
-			    selectedObjects = [];
+			    selectedObjects = { wall1: [], wall2: [] };
 			}
-		    },
-		    error: function (xhr, status, error) {
-			console.error('Error saving entry:', status, error); // Log error
 		    }
 		});
-	    });
-
+	    }
+	});
 
             function loadEntries() {
                 $.get('/get_entries', function (entries) {
-                    console.log('Loading entries:', entries);
-                    entries.sort(function(a, b) {
-                        return a[1].localeCompare(b[1]);
-                    });
                     $('#entriesList').empty();
-                    entries.forEach(function (entry) {
-                        $('#entriesList').append('<li data-id="' + entry[0] + '"><span class="entry-text">' + entry[1] + '</span><div class="entry-buttons"><button class="editEntry">Rediger</button><button class="deleteEntry">Slet</button></div></li>');
+                    entries.sort((a, b) => a[1].localeCompare(b[1]));
+                    entries.forEach(entry => {
+                        $('#entriesList').append(`<li data-id="${entry[0]}"><span class="entry-text">${entry[1]}</span><div class="entry-buttons"><button class="editEntry">Rediger</button><button class="deleteEntry">Slet</button></div></li>`);
                     });
-                }).fail(function (xhr, status, error) {
-                    console.error('Error loading entries:', status, error);
                 });
             }
 
-            $('#entriesList').on('click', 'li', function () {
-                var entryId = $(this).data('id');
-                console.log('Loading entry:', entryId);
-                $.get('/entry/' + entryId, function (entry) {
-                    var selected = entry[2].split(',').map(Number);
-                    $('.object').removeClass('selected');
-                    selected.forEach(function (index) {
-                        $('.object').eq(index).addClass('selected');
-                    });
-                    $('#entry-name').text(entry[1]);
-		    // Scroll to just below the first header
-        	    $('html, body').animate({
-            		scrollTop: $('h1').offset().top + $('h1').outerHeight()
-        	    }, 500); // 500 milliseconds for smooth scroll
-                }).fail(function (xhr, status, error) {
-                    console.error('Error loading entry:', status, error);
-                });
+            $(document).ready(function () {
+                loadObjects(1);
+                loadObjects(2);
+                $('#wall1').addClass('active');
+                $(`.object-layer[data-wall="1"]`).show();
+                loadEntries();
             });
 
-	    $('#entriesList').on('click', '.editEntry', function (event) {
-		event.stopPropagation(); // Prevent triggering the entry selection when clicking "Edit"
-                var entryId = $(this).closest('li').data('id');
-                var currentName = $(this).closest('li').text().replace('RedigerSlet', '');
+	// Handle edit
+	$('#entriesList').on('click', '.editEntry', function () {
+	    const entryId = $(this).closest('li').data('id');
+	    $.get(`/entry/${entryId}`, function(entry) {
+		$('#entry-name').text('Rediger problem');
+		$('#entryName').val(entry[1]);
 
-		var newName = prompt("Nyt navn til problem:", currentName);
-		if (!newName || newName === currentName) {
-		    return;
+		$('.object').removeClass('selected');
+		selectedObjects = { wall1: [], wall2: [] };
+
+		if (entry[2].wall1.length > 0) {
+		    entry[2].wall1.forEach(index => {
+			$(`.object[data-wall="1"]`).eq(index).addClass('selected');
+		    });
+		    selectedObjects.wall1 = entry[2].wall1;
+		}
+		if (entry[2].wall2.length > 0) {
+		    entry[2].wall2.forEach(index => {
+			$(`.object[data-wall="2"]`).eq(index).addClass('selected');
+		    });
+		    selectedObjects.wall2 = entry[2].wall2;
 		}
 
-		if (!validateEntryText(newName)) {
-		    alert("Tekst skal starte med sværhedsgrad eller med 'Projekt'");
-		    return;
-		}
+		$('#saveEntry')
+		    .data('editing', entryId)
+		    .text('Opdater problem');
+	    });
+	});
 
-		$.ajax({
-		    url: '/update_entry/' + entryId,
-		    type: 'POST',
-		    contentType: 'application/json',
-		    data: JSON.stringify({ name: newName }),
-		    success: function (response) {
-			if (response.status === 'success') {
-			    loadEntries(); // Reload entries after update
-			}
-		    },
-		    error: function (xhr, status, error) {
-			console.error('Error updating entry:', status, error); // Log error
+	// Handle delete
+	$('#entriesList').on('click', '.deleteEntry', function () {
+	    const entryId = $(this).closest('li').data('id');
+	    if (confirm('Er du sikker på du vil slette dette problem?')) {
+		$.post(`/delete_entry/${entryId}`, function (response) {
+		    if (response.status === 'success') {
+			loadEntries();
 		    }
 		});
-	    });
+	    }
+	});
 
-            $('#entriesList').on('click', '.deleteEntry', function (event) {
-                event.stopPropagation();
-                var entryId = $(this).closest('li').data('id');
-                var entryName = $(this).closest('li').text().replace('RedigerSlet', '');
-
-                if (confirm("Er du sikker på du vil slette:\n\n" + entryName)) {
-                    $.ajax({
-                        url: '/delete_entry/' + entryId,
-                        type: 'POST',
-                        success: function (response) {
-                            if (response.status === 'success') {
-                                loadEntries();
-                                $('#entry-name').text('Nyt problem');
-                                $('.object').removeClass('selected');
-                            }
-                        },
-                        error: function (xhr, status, error) {
-                            console.error('Error deleting entry:', status, error);
-                        }
-                    });
-                }
-            });
-
-            $('#clearSelection').on('click', function () {
-                $('.object').removeClass('selected');
-                selectedObjects = [];
-                console.log('Selection cleared');
-                $('#entry-name').text('Nyt problem');
-		$('#entryName').val('');
-            });
-
-            loadObjects();
-            loadEntries();
-        });
-    </script>
+        </script>
     </div>
 </body>
 </html>
-

@@ -1,0 +1,293 @@
+{
+  "weeks": {
+    "1": {
+      "wednesday": [
+        {
+          "exercise": "Deadlift",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.65},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 5, "intensity": 0.85}
+          ]
+        },
+        {
+          "exercise": "Overhead press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.65},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 5, "intensity": 0.85}
+          ]
+        },
+        {
+          "exercise": "Chin-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.7},
+            {"reps": 5, "intensity": 0.8}
+          ]
+	}
+      ],
+      "saturday": [
+        {
+          "exercise": "Bench press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.65},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 5, "intensity": 0.85}
+          ]
+        },
+        {
+          "exercise": "Pull-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.7},
+            {"reps": 5, "intensity": 0.8}
+          ]
+        },
+        {
+          "exercise": "Rolling",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.65},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 5, "intensity": 0.85}
+          ]
+	}
+      ]
+    },
+    "2": {
+      "wednesday": [
+        {
+          "exercise": "Deadlift",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 3, "intensity": 0.7},
+            {"reps": 3, "intensity": 0.8},
+            {"reps": 3, "intensity": 0.9}
+          ]
+        },
+        {
+          "exercise": "Overhead press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 3, "intensity": 0.7},
+            {"reps": 3, "intensity": 0.8},
+            {"reps": 3, "intensity": 0.9}
+          ]
+        },
+        {
+          "exercise": "Chin-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 3, "intensity": 0.65},
+            {"reps": 3, "intensity": 0.75},
+            {"reps": 3, "intensity": 0.9}
+          ]
+	}
+      ],
+      "saturday": [
+        {
+          "exercise": "Bench press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 3, "intensity": 0.7},
+            {"reps": 3, "intensity": 0.8},
+            {"reps": 3, "intensity": 0.9}
+          ]
+        },
+        {
+          "exercise": "Pull-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 3, "intensity": 0.65},
+            {"reps": 3, "intensity": 0.75},
+            {"reps": 3, "intensity": 0.9}
+          ]
+        },
+        {
+          "exercise": "Rolling",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 3, "intensity": 0.7},
+            {"reps": 3, "intensity": 0.8},
+            {"reps": 3, "intensity": 0.9}
+          ]
+	}
+      ]
+    },
+    "3": {
+      "wednesday": [
+        {
+          "exercise": "Deadlift",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 3, "intensity": 0.85},
+            {"reps": 1, "intensity": 0.95}
+          ]
+        },
+        {
+          "exercise": "Overhead press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 3, "intensity": 0.85},
+            {"reps": 1, "intensity": 0.95}
+          ]
+        },
+        {
+          "exercise": "Chin-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.7},
+            {"reps": 3, "intensity": 0.8},
+            {"reps": 1, "intensity": 0.95}
+          ]
+	}
+      ],
+      "saturday": [
+        {
+          "exercise": "Bench press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 3, "intensity": 0.85},
+            {"reps": 1, "intensity": 0.95}
+          ]
+        },
+        {
+          "exercise": "Pull-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.7},
+            {"reps": 3, "intensity": 0.8},
+            {"reps": 1, "intensity": 0.95}
+          ]
+        },
+        {
+          "exercise": "Rolling",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.75},
+            {"reps": 3, "intensity": 0.85},
+            {"reps": 1, "intensity": 0.95}
+          ]
+	}
+      ]
+    },
+    "4": {
+      "wednesday": [
+        {
+          "exercise": "Deadlift",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.6}
+          ]
+        },
+        {
+          "exercise": "Overhead press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.6}
+          ]
+        },
+        {
+          "exercise": "Chin-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.3},
+            {"reps": 5, "intensity": 0.3},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.5}
+          ]
+	}
+      ],
+      "saturday": [
+        {
+          "exercise": "Bench press",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.6}
+          ]
+        },
+        {
+          "exercise": "Pull-up",
+          "sets": [
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0},
+            {"reps": 5, "intensity": 0.3},
+            {"reps": 5, "intensity": 0.3},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.5}
+          ]
+        },
+        {
+          "exercise": "Rolling",
+          "sets": [
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.4},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.5},
+            {"reps": 5, "intensity": 0.6},
+            {"reps": 5, "intensity": 0.6}
+          ]
+	}
+      ]
+    }
+  }
+}
+

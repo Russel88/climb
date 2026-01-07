@@ -1,0 +1,45 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krake Crag</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .object {
+            pointer-events: none;
+            position: absolute;
+            border: none;
+        }
+        .wall-image {
+            display: none;
+            max-width: 100%;
+            position: relative;
+        }
+        .active {
+            display: block;
+        }
+        .image-container {
+            position: relative;
+        }
+        .object-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+        #wall-toggle-wrapper {
+            display: none;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="content-wrapper">
+        <h1 class="center-text">Under ombygning</h1>
+    </div>
+</body>
+</html>
+

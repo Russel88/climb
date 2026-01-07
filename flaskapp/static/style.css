@@ -11,6 +11,13 @@ body {
     line-height: 1.6;
 }
 
+.object-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
 .content-wrapper {
     max-width: 800px;
     margin: 40px auto;
@@ -167,4 +174,26 @@ ul li:hover {
 .deleteEntry:hover {
     background-color: #c0392b;
 }
+.buttons {
+    width: 200px;
+    margin: 0 auto;
+    display: inline;
+}
+.wall-toggle {
+    width: calc(50% - 4px);
+    display: inline;
+    margin: 0 auto 20px auto;
+    padding: 10px 20px;
+    font-size: 1.25rem;
+    color: #fff;
+    background-color: #2980b9;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.wall-toggle:hover {
+    background-color: #3498db;
+} 
 

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Training Weights</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .container { max-width: 600px; margin: 20px auto; font-family: sans-serif; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f4f4f4; }
+    input[type="number"] { width: 80px; }
+    button { background-color: #4CAF50; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    button:hover { background-color: #45a049; }
+    h1 { text-align: center; }
+    .back { margin-top: 10px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Edit Training Weights</h1>
+    <div id="weightFormContainer"></div>
+    <button onclick="saveWeights()">Save Weights</button>
+    <a href="/personal" class="back">← Back to Training</a>
+  </div>
+
+<script>
+let program = {};
+let totalWeights = {};
+
+async function init() {
+  program = await (await fetch("/api/program")).json();
+  totalWeights = await (await fetch("/api/weights")).json();
+
+  const container = document.getElementById("weightFormContainer");
+  container.innerHTML = "";
+
+  // Collect all exercises from all weeks (unique)
+  let exercises = new Set();
+  for (let week of Object.values(program.weeks)) {
+    for (let day of Object.values(week)) {
+      day.forEach(ex => exercises.add(ex.exercise));
+    }
+  }
+
+  let table = document.createElement("table");
+  let header = document.createElement("tr");
+  header.innerHTML = "<th>Exercise</th><th>Previous Weight (kg)</th><th>New Weight (kg)</th>";
+  table.appendChild(header);
+
+  exercises.forEach(ex => {
+    let row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${ex}</td>
+      <td>${totalWeights[ex] || "-"}</td>
+      <td><input type="number" min="0" id="weight_${ex}" value="${totalWeights[ex] || 0}"></td>
+    `;
+    table.appendChild(row);
+  });
+
+  container.appendChild(table);
+}
+
+async function saveWeights() {
+  const newWeights = {};
+  for (let input of document.querySelectorAll("input[id^='weight_']")) {
+    const ex = input.id.replace("weight_", "");
+    newWeights[ex] = Number(input.value) || 0;
+  }
+
+  const res = await fetch("/api/weights", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newWeights)
+  });
+
+  const data = await res.json();
+  if (data.status === "saved") {
+    alert("Weights updated!");
+  } else {
+    alert("Error saving weights");
+  }
+}
+
+init();
+</script>
+</body>
+</html>
+
