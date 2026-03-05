@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     JSON,
@@ -54,10 +55,10 @@ class PersonalExercise(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     kind: Mapped[ExerciseKind] = mapped_column(SqlEnum(ExerciseKind), nullable=False)
-    load_kind: Mapped[LoadKind | None] = mapped_column(SqlEnum(LoadKind), nullable=True)
-    target_added_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(8, 3), nullable=True)
-    increment_step_kg: Mapped[Decimal | None] = mapped_column(Numeric(8, 3), nullable=True)
-    rounding_step_kg: Mapped[Decimal | None] = mapped_column(Numeric(8, 3), nullable=True)
+    load_kind: Mapped[Optional[LoadKind]] = mapped_column(SqlEnum(LoadKind), nullable=True)
+    target_added_weight_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
+    increment_step_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
+    rounding_step_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -67,7 +68,7 @@ class PersonalExercise(db.Model):
         onupdate=func.now(),
     )
 
-    week_plans: Mapped[list[PersonalExerciseWeekPlan]] = relationship(
+    week_plans: Mapped[List["PersonalExerciseWeekPlan"]] = relationship(
         back_populates="exercise",
         cascade="all, delete-orphan",
         order_by="PersonalExerciseWeekPlan.week_no",
@@ -118,7 +119,7 @@ class PersonalWorkoutTemplate(db.Model):
         onupdate=func.now(),
     )
 
-    items: Mapped[list[PersonalWorkoutTemplateItem]] = relationship(
+    items: Mapped[List["PersonalWorkoutTemplateItem"]] = relationship(
         back_populates="template",
         cascade="all, delete-orphan",
         order_by="PersonalWorkoutTemplateItem.position",
@@ -147,21 +148,21 @@ class PersonalWorkoutSession(db.Model):
     session_date: Mapped[date] = mapped_column(Date, nullable=False)
     mode: Mapped[WorkoutMode] = mapped_column(SqlEnum(WorkoutMode), nullable=False)
     source: Mapped[WorkoutSource] = mapped_column(SqlEnum(WorkoutSource), nullable=False)
-    template_id: Mapped[int | None] = mapped_column(ForeignKey("personal_workout_template.id", ondelete="SET NULL"), nullable=True)
+    template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("personal_workout_template.id", ondelete="SET NULL"), nullable=True)
     cycle_number: Mapped[int] = mapped_column(Integer, nullable=False)
     cycle_week: Mapped[int] = mapped_column(Integer, nullable=False)
-    bodyweight_kg: Mapped[Decimal | None] = mapped_column(Numeric(8, 3), nullable=True)
-    task_plan: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
+    bodyweight_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
+    task_plan: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
     next_task_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    items: Mapped[list[PersonalWorkoutSessionItem]] = relationship(
+    items: Mapped[List["PersonalWorkoutSessionItem"]] = relationship(
         back_populates="session",
         cascade="all, delete-orphan",
         order_by="PersonalWorkoutSessionItem.position",
     )
-    template: Mapped[PersonalWorkoutTemplate | None] = relationship()
+    template: Mapped[Optional["PersonalWorkoutTemplate"]] = relationship()
 
 
 class PersonalWorkoutSessionItem(db.Model):
@@ -202,7 +203,7 @@ class PersonalNonProgressiveLog(db.Model):
     session_id: Mapped[int] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="CASCADE"), nullable=False)
     exercise_id: Mapped[int] = mapped_column(ForeignKey("personal_exercise.id", ondelete="RESTRICT"), nullable=False)
     performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class PersonalDailyNote(db.Model):
@@ -227,7 +228,7 @@ class PersonalBodyweightLog(db.Model):
     measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     bodyweight_kg: Mapped[Decimal] = mapped_column(Numeric(8, 3), nullable=False)
     source: Mapped[BodyweightSource] = mapped_column(SqlEnum(BodyweightSource), nullable=False)
-    session_id: Mapped[int | None] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="SET NULL"), nullable=True)
+    session_id: Mapped[Optional[int]] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="SET NULL"), nullable=True)
 
 
 class PersonalCycleReview(db.Model):
