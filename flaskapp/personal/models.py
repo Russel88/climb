@@ -24,6 +24,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from flaskapp.extensions import db
 
 
+def _enum_column(enum_cls: type[Enum], name: str) -> SqlEnum:
+    return SqlEnum(
+        enum_cls,
+        name=name,
+        values_callable=lambda members: [member.value for member in members],
+    )
+
+
 class ExerciseKind(str, Enum):
     PROGRESSIVE = "progressive"
     NON_PROGRESSIVE = "non_progressive"
@@ -54,8 +62,8 @@ class PersonalExercise(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    kind: Mapped[ExerciseKind] = mapped_column(SqlEnum(ExerciseKind), nullable=False)
-    load_kind: Mapped[Optional[LoadKind]] = mapped_column(SqlEnum(LoadKind), nullable=True)
+    kind: Mapped[ExerciseKind] = mapped_column(_enum_column(ExerciseKind, "exercisekind"), nullable=False)
+    load_kind: Mapped[Optional[LoadKind]] = mapped_column(_enum_column(LoadKind, "loadkind"), nullable=True)
     target_added_weight_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
     increment_step_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
     rounding_step_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
@@ -146,8 +154,8 @@ class PersonalWorkoutSession(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_date: Mapped[date] = mapped_column(Date, nullable=False)
-    mode: Mapped[WorkoutMode] = mapped_column(SqlEnum(WorkoutMode), nullable=False)
-    source: Mapped[WorkoutSource] = mapped_column(SqlEnum(WorkoutSource), nullable=False)
+    mode: Mapped[WorkoutMode] = mapped_column(_enum_column(WorkoutMode, "workoutmode"), nullable=False)
+    source: Mapped[WorkoutSource] = mapped_column(_enum_column(WorkoutSource, "workoutsource"), nullable=False)
     template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("personal_workout_template.id", ondelete="SET NULL"), nullable=True)
     cycle_number: Mapped[int] = mapped_column(Integer, nullable=False)
     cycle_week: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -227,7 +235,7 @@ class PersonalBodyweightLog(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     bodyweight_kg: Mapped[Decimal] = mapped_column(Numeric(8, 3), nullable=False)
-    source: Mapped[BodyweightSource] = mapped_column(SqlEnum(BodyweightSource), nullable=False)
+    source: Mapped[BodyweightSource] = mapped_column(_enum_column(BodyweightSource, "bodyweightsource"), nullable=False)
     session_id: Mapped[Optional[int]] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="SET NULL"), nullable=True)
 
 
