@@ -1,0 +1,43 @@
+{% extends "personal/base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Exercises</h2>
+  <form id="exerciseForm" class="stack">
+    <input type="hidden" id="exerciseId">
+    <label>Name<input id="name" required></label>
+    <label>Kind
+      <select id="kind">
+        <option value="progressive">Progressive</option>
+        <option value="non_progressive">Non-progressive</option>
+      </select>
+    </label>
+    <label id="loadKindWrap">Load kind
+      <select id="loadKind">
+        <option value="external">External</option>
+        <option value="bodyweight_external">Bodyweight + external</option>
+      </select>
+    </label>
+    <label class="progressive-only">Target added weight (kg)<input id="targetWeight" type="number" step="0.01"></label>
+    <label class="progressive-only">Increment step (kg)<input id="incrementStep" type="number" step="0.01"></label>
+    <label class="progressive-only">Rounding step (kg)<input id="roundingStep" type="number" step="0.01"></label>
+
+    <div class="progressive-only">
+      <h3>Week plan</h3>
+      <div id="weekPlanGrid" class="week-grid"></div>
+    </div>
+
+    <button type="submit">Save exercise</button>
+    <button type="button" id="resetExerciseForm">Clear</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Saved exercises</h2>
+  <div id="exerciseList" class="stack"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='personal/js/exercises.js') }}"></script>
+{% endblock %}

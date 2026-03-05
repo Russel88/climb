@@ -1,6 +1,27 @@
+# macOS
+.DS_Store
+._*
+
+# Python
 __pycache__/
-._flaskapp
-._wsgy.py
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Local env
+.env
+.env.*
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Local runtime data
+instance/*.db
+
+# Hidden metadata in app directories
 flaskapp/.*
 flaskapp/static/.*
 flaskapp/templates/.*

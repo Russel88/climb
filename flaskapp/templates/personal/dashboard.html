@@ -1,0 +1,13 @@
+{% extends "personal/base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Cycle Status</h2>
+  <div id="cycleStatus" class="stack"></div>
+  <div id="suggestions" class="stack"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='personal/js/dashboard.js') }}"></script>
+{% endblock %}

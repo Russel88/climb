@@ -1,0 +1,39 @@
+{% extends "personal/base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Exercise History</h2>
+  <form id="historyFilterForm" class="stack inline-form">
+    <label>Exercise<select id="historyExercise"></select></label>
+    <label>Range type
+      <select id="historyRangeType">
+        <option value="days">Days</option>
+        <option value="weeks" selected>Weeks</option>
+        <option value="months">Months</option>
+      </select>
+    </label>
+    <label>Value<input id="historyRangeValue" type="number" min="1" value="8"></label>
+    <button type="submit">Load history</button>
+  </form>
+  <div id="historyResult" class="stack"></div>
+</section>
+
+<section class="card">
+  <h2>Month Overview</h2>
+  <form id="monthFilterForm" class="stack inline-form">
+    <label>Year<input id="monthYear" type="number"></label>
+    <label>Month<input id="monthMonth" type="number" min="1" max="12"></label>
+    <button type="submit">Load month</button>
+  </form>
+  <form id="noteForm" class="stack inline-form">
+    <label>Date<input id="noteDate" type="date"></label>
+    <label>Note<input id="noteText" type="text"></label>
+    <button type="submit">Save note</button>
+  </form>
+  <div id="monthCalendar" class="calendar-grid"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='personal/js/history.js') }}"></script>
+{% endblock %}

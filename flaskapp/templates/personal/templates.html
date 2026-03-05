@@ -1,0 +1,26 @@
+{% extends "personal/base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Workout Templates</h2>
+  <form id="templateForm" class="stack">
+    <input type="hidden" id="templateRecordId">
+    <label>Name<input id="templateName" required></label>
+    <div>
+      <h3>Exercise order</h3>
+      <div id="templateExerciseList" class="stack"></div>
+    </div>
+    <button type="submit">Save template</button>
+    <button type="button" id="templateFormReset">Clear</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Saved templates</h2>
+  <div id="templateList" class="stack"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='personal/js/templates.js') }}"></script>
+{% endblock %}
