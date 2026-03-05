@@ -16,7 +16,8 @@ if config.config_file_name is not None:
 
 env_url = os.getenv("PERSONAL_DATABASE_URL")
 if env_url:
-    config.set_main_option("sqlalchemy.url", env_url)
+    # Alembic uses ConfigParser interpolation; raw '%' must be escaped.
+    config.set_main_option("sqlalchemy.url", env_url.replace("%", "%%"))
 
 target_metadata = db.metadata
 
