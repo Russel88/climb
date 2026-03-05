@@ -79,10 +79,20 @@ function renderExerciseHistory(payload) {
   historyResult.innerHTML = "";
   historyResult.appendChild(line(`From ${payload.start_date} to ${payload.end_date}`));
   if (payload.progressive_logs.length) {
+    const maxByDay = /* @__PURE__ */ new Map();
     payload.progressive_logs.forEach((log) => {
+      if (log.actual_reps <= 0) {
+        return;
+      }
+      const current = maxByDay.get(log.date);
+      if (!current || log.planned_weight_kg > current.planned_weight_kg || log.planned_weight_kg === current.planned_weight_kg && log.actual_reps > current.actual_reps) {
+        maxByDay.set(log.date, log);
+      }
+    });
+    Array.from(maxByDay.values()).forEach((log) => {
       historyResult.appendChild(
         line(
-          `${log.date}: set ${log.set_index}, ${log.planned_weight_kg} kg, target ${log.planned_reps}, actual ${log.actual_reps}`
+          `${log.date}: max planned ${log.planned_weight_kg} kg, target ${log.planned_reps}, actual ${log.actual_reps}`
         )
       );
     });

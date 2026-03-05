@@ -397,6 +397,7 @@ def exercise_history(exercise_id: int, start_day: date, end_day: date) -> dict[s
                 "planned_reps": log.planned_reps,
                 "actual_reps": log.actual_reps,
                 "planned_weight_kg": float(log.planned_weight_kg),
+                "logged_weight_kg": float(log.planned_weight_kg),
                 "cycle_number": log.cycle_number,
                 "cycle_week": log.cycle_week,
             }
