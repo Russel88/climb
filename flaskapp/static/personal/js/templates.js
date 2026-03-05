@@ -34,7 +34,14 @@ function errorMessage(error) {
 }
 async function handleResponse(response) {
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : {};
+  let payload = {};
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { error: text };
+    }
+  }
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     if (payload && typeof payload === "object" && "error" in payload) {

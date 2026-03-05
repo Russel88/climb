@@ -4,7 +4,8 @@ interface WeekPlanEntry {
   week_no: number;
   sets: number;
   target_reps: number;
-  target_percent: number;
+  target_percent?: number;
+  target_percents: number[];
 }
 
 interface ExerciseRecord {
@@ -49,18 +50,26 @@ const resetButton = mustElement<HTMLButtonElement>('resetExerciseForm');
 
 let cachedExercises: ExerciseRecord[] = [];
 
+const DEFAULT_WEEK_PERCENTS: Record<number, number[]> = {
+  1: [40, 50, 60, 65, 75, 85],
+  2: [40, 50, 60, 70, 80, 90],
+  3: [40, 50, 60, 75, 85, 95],
+  4: [40, 40, 50, 50, 60, 60],
+};
+
 function renderWeekPlanInputs(): void {
   weekPlanGrid.innerHTML = '';
   for (let week = 1; week <= 4; week += 1) {
     const wrapper = document.createElement('div');
     wrapper.className = 'item-row';
+    const defaults = DEFAULT_WEEK_PERCENTS[week];
 
     wrapper.innerHTML = `
       <div>
         <strong>Week ${week}</strong>
-        <label>Sets<input type="number" min="1" step="1" data-week="${week}" data-field="sets" value="3"></label>
+        <label>Sets<input type="number" min="1" step="1" data-week="${week}" data-field="sets" value="6"></label>
         <label>Target reps<input type="number" min="1" step="1" data-week="${week}" data-field="target_reps" value="5"></label>
-        <label>Target %<input type="number" min="1" step="0.1" data-week="${week}" data-field="target_percent" value="${week === 4 ? 65 : 75 + (week - 1) * 5}"></label>
+        <label>Set % list<input type="text" data-week="${week}" data-field="target_percents" value="${defaults.join(', ')}"></label>
       </div>
     `;
 
@@ -93,13 +102,18 @@ function weekPlanFromInputs(): WeekPlanEntry[] {
   for (let week = 1; week <= 4; week += 1) {
     const sets = Number(mustInput(`[data-week="${week}"][data-field="sets"]`).value);
     const targetReps = Number(mustInput(`[data-week="${week}"][data-field="target_reps"]`).value);
-    const targetPercent = Number(mustInput(`[data-week="${week}"][data-field="target_percent"]`).value);
+    const percentsRaw = mustInput(`[data-week="${week}"][data-field="target_percents"]`).value;
+    const targetPercents = percentsRaw
+      .split(/[,\s]+/)
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+      .map((value) => Number(value));
 
     result.push({
       week_no: week,
       sets,
       target_reps: targetReps,
-      target_percent: targetPercent,
+      target_percents: targetPercents,
     });
   }
   return result;
@@ -145,7 +159,10 @@ function fillForm(exercise: ExerciseRecord): void {
     exercise.week_plan.forEach((week) => {
       mustInput(`[data-week="${week.week_no}"][data-field="sets"]`).value = String(week.sets);
       mustInput(`[data-week="${week.week_no}"][data-field="target_reps"]`).value = String(week.target_reps);
-      mustInput(`[data-week="${week.week_no}"][data-field="target_percent"]`).value = String(week.target_percent);
+      const percents = week.target_percents?.length
+        ? week.target_percents
+        : [week.target_percent ?? 0];
+      mustInput(`[data-week="${week.week_no}"][data-field="target_percents"]`).value = percents.join(', ');
     });
   }
 

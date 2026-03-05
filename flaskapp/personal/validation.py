@@ -36,7 +36,20 @@ def _validate_week_plan(week_plan: Any) -> list[dict[str, Any]]:
         week_no = int(entry.get("week_no", 0))
         sets = int(entry.get("sets", 0))
         target_reps = int(entry.get("target_reps", 0))
-        target_percent = _to_decimal(entry.get("target_percent"), "target_percent")
+        raw_target_percents = entry.get("target_percents")
+        target_percents: list[Decimal] = []
+
+        if isinstance(raw_target_percents, list) and raw_target_percents:
+            for index, raw_value in enumerate(raw_target_percents, start=1):
+                percent = _to_decimal(raw_value, f"target_percents[{index}]")
+                if percent <= 0:
+                    raise ValidationError(f"target_percents[{index}] must be > 0")
+                target_percents.append(percent)
+        else:
+            target_percent = _to_decimal(entry.get("target_percent"), "target_percent")
+            if target_percent <= 0:
+                raise ValidationError("target_percent must be > 0")
+            target_percents = [target_percent for _ in range(max(sets, 1))]
 
         if week_no < 1 or week_no > 4:
             raise ValidationError("week_no must be between 1 and 4")
@@ -46,8 +59,8 @@ def _validate_week_plan(week_plan: Any) -> list[dict[str, Any]]:
             raise ValidationError("sets must be >= 1")
         if target_reps < 1:
             raise ValidationError("target_reps must be >= 1")
-        if target_percent <= 0:
-            raise ValidationError("target_percent must be > 0")
+        if len(target_percents) != sets:
+            raise ValidationError("target_percents length must match sets")
 
         seen_weeks.add(week_no)
         normalized.append(
@@ -55,7 +68,8 @@ def _validate_week_plan(week_plan: Any) -> list[dict[str, Any]]:
                 "week_no": week_no,
                 "sets": sets,
                 "target_reps": target_reps,
-                "target_percent": target_percent,
+                "target_percent": target_percents[0],
+                "target_percents": target_percents,
             }
         )
 

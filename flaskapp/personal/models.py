@@ -96,6 +96,7 @@ class PersonalExerciseWeekPlan(db.Model):
     sets: Mapped[int] = mapped_column(Integer, nullable=False)
     target_reps: Mapped[int] = mapped_column(Integer, nullable=False)
     target_percent: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False)
+    target_percents: Mapped[Optional[List[float]]] = mapped_column(JSON, nullable=True)
 
     exercise: Mapped[PersonalExercise] = relationship(back_populates="week_plans")
 

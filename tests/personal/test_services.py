@@ -22,15 +22,15 @@ class ServicesTestCase(unittest.TestCase):
             target_added_weight_kg=Decimal("20"),
             rounding_step_kg=Decimal("2.5"),
         )
-        week_plan = SimpleNamespace(target_percent=Decimal("50"))
+        week_plan = SimpleNamespace(target_percent=Decimal("50"), target_percents=[50.0])
 
-        result = planned_weight_for_week(exercise, week_plan, Decimal("80"))
+        result = planned_weight_for_week(exercise, week_plan, 1, Decimal("80"))
 
         self.assertEqual(result, Decimal("-30"))
 
     def test_build_task_plan_interleaved_round_robin(self):
-        week_plan_a = SimpleNamespace(week_no=1, sets=2, target_reps=5, target_percent=Decimal("70"))
-        week_plan_b = SimpleNamespace(week_no=1, sets=3, target_reps=6, target_percent=Decimal("80"))
+        week_plan_a = SimpleNamespace(week_no=1, sets=2, target_reps=5, target_percent=Decimal("70"), target_percents=[70.0, 75.0])
+        week_plan_b = SimpleNamespace(week_no=1, sets=3, target_reps=6, target_percent=Decimal("80"), target_percents=[80.0, 85.0, 90.0])
 
         exercise_a = SimpleNamespace(
             id=1,
@@ -73,6 +73,8 @@ class ServicesTestCase(unittest.TestCase):
                 ("Squat", 3),
             ],
         )
+        self.assertEqual(tasks[0]["planned_weight_kg"], 70.0)
+        self.assertEqual(tasks[2]["planned_weight_kg"], 75.0)
 
 
 if __name__ == "__main__":

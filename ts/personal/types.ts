@@ -3,6 +3,7 @@ export interface WeekPlanDto {
   sets: number;
   targetReps: number;
   targetPercent: number;
+  targetPercents: number[];
 }
 
 export interface ExerciseDto {

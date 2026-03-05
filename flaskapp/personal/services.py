@@ -91,6 +91,7 @@ def round_down_to_step(value: Decimal, step: Decimal) -> Decimal:
 def planned_weight_for_week(
     exercise: PersonalExercise,
     week_plan: PersonalExerciseWeekPlan,
+    set_index: int,
     bodyweight_kg: Decimal | None,
 ) -> Decimal:
     if exercise.kind != ExerciseKind.PROGRESSIVE:
@@ -98,7 +99,12 @@ def planned_weight_for_week(
     if exercise.target_added_weight_kg is None or exercise.rounding_step_kg is None:
         raise ValueError("progressive exercise is missing target or rounding")
 
-    percent = week_plan.target_percent / Decimal("100")
+    if week_plan.target_percents and len(week_plan.target_percents) >= set_index:
+        set_percent = Decimal(str(week_plan.target_percents[set_index - 1]))
+    else:
+        set_percent = week_plan.target_percent
+
+    percent = set_percent / Decimal("100")
 
     if exercise.load_kind == LoadKind.EXTERNAL:
         planned_external = exercise.target_added_weight_kg * percent
@@ -141,7 +147,14 @@ def _task_payload(
         }
 
     week_plan = _week_plan_for_exercise(exercise, week_no)
-    planned_weight = planned_weight_for_week(exercise, week_plan, bodyweight_kg)
+    if set_index < 1:
+        raise ValueError("set_index must be >= 1")
+    if week_plan.target_percents and len(week_plan.target_percents) >= set_index:
+        target_percent = Decimal(str(week_plan.target_percents[set_index - 1]))
+    else:
+        target_percent = week_plan.target_percent
+
+    planned_weight = planned_weight_for_week(exercise, week_plan, set_index, bodyweight_kg)
 
     return {
         "session_item_id": session_item.id,
@@ -151,7 +164,7 @@ def _task_payload(
         "set_index": set_index,
         "planned_reps": week_plan.target_reps,
         "planned_weight_kg": float(planned_weight),
-        "target_percent": float(week_plan.target_percent),
+        "target_percent": float(target_percent),
     }
 
 

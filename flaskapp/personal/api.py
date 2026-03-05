@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from flask import Blueprint, jsonify, request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 
 from flaskapp.extensions import db
@@ -91,6 +92,18 @@ def _session_or_404(session_id: int) -> PersonalWorkoutSession | tuple[Any, int]
 def _validation_error(exc: ValidationError):
     db.session.rollback()
     return _error(str(exc), 400)
+
+
+@personal_api_bp.errorhandler(IntegrityError)
+def _integrity_error(_: IntegrityError):
+    db.session.rollback()
+    return _error("Cannot delete exercise because it is used in templates or workout history", 409)
+
+
+@personal_api_bp.errorhandler(Exception)
+def _unhandled_error(exc: Exception):
+    db.session.rollback()
+    return _error(f"Internal error: {exc}", 500)
 
 
 @personal_api_bp.route("/cycle/state", methods=["GET"])
@@ -191,6 +204,7 @@ def create_exercise():
                 sets=week["sets"],
                 target_reps=week["target_reps"],
                 target_percent=week["target_percent"],
+                target_percents=[float(value) for value in week["target_percents"]],
             )
         )
 
@@ -233,6 +247,7 @@ def update_exercise(exercise_id: int):
                 sets=week["sets"],
                 target_reps=week["target_reps"],
                 target_percent=week["target_percent"],
+                target_percents=[float(value) for value in week["target_percents"]],
             )
         )
 

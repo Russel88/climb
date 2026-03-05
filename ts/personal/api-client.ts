@@ -38,7 +38,14 @@ export function errorMessage(error: unknown): string {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
-  const payload: unknown = text ? JSON.parse(text) : {};
+  let payload: unknown = {};
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { error: text };
+    }
+  }
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
