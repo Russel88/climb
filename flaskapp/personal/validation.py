@@ -36,8 +36,25 @@ def _validate_week_plan(week_plan: Any) -> list[dict[str, Any]]:
         week_no = int(entry.get("week_no", 0))
         sets = int(entry.get("sets", 0))
         target_reps = int(entry.get("target_reps", 0))
+        raw_target_reps_list = entry.get("target_reps_list")
+        target_reps_list: list[int] = []
         raw_target_percents = entry.get("target_percents")
         target_percents: list[Decimal] = []
+
+        if isinstance(raw_target_reps_list, list) and raw_target_reps_list:
+            for index, raw_value in enumerate(raw_target_reps_list, start=1):
+                try:
+                    reps_value = int(raw_value)
+                except (TypeError, ValueError) as exc:
+                    raise ValidationError(f"target_reps_list[{index}] must be an integer") from exc
+                if reps_value < 1:
+                    raise ValidationError(f"target_reps_list[{index}] must be >= 1")
+                target_reps_list.append(reps_value)
+            target_reps = target_reps_list[0]
+        else:
+            if target_reps < 1:
+                raise ValidationError("target_reps must be >= 1")
+            target_reps_list = [target_reps for _ in range(max(sets, 1))]
 
         if isinstance(raw_target_percents, list) and raw_target_percents:
             for index, raw_value in enumerate(raw_target_percents, start=1):
@@ -57,8 +74,8 @@ def _validate_week_plan(week_plan: Any) -> list[dict[str, Any]]:
             raise ValidationError("week_plan week_no values must be unique")
         if sets < 1:
             raise ValidationError("sets must be >= 1")
-        if target_reps < 1:
-            raise ValidationError("target_reps must be >= 1")
+        if len(target_reps_list) != sets:
+            raise ValidationError("target_reps_list length must match sets")
         if len(target_percents) != sets:
             raise ValidationError("target_percents length must match sets")
 
@@ -68,6 +85,7 @@ def _validate_week_plan(week_plan: Any) -> list[dict[str, Any]]:
                 "week_no": week_no,
                 "sets": sets,
                 "target_reps": target_reps,
+                "target_reps_list": target_reps_list,
                 "target_percent": target_percents[0],
                 "target_percents": target_percents,
             }

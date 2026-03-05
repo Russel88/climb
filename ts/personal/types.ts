@@ -2,6 +2,7 @@ export interface WeekPlanDto {
   weekNo: number;
   sets: number;
   targetReps: number;
+  targetRepsList: number[];
   targetPercent: number;
   targetPercents: number[];
 }

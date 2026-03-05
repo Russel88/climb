@@ -32,6 +32,9 @@ def iso_datetime(value: datetime | None) -> str | None:
 def serialize_exercise(exercise: PersonalExercise) -> dict[str, Any]:
     week_plan = []
     for item in exercise.week_plans:
+        reps_list = item.target_reps_list
+        if not reps_list:
+            reps_list = [item.target_reps] * item.sets
         percents = item.target_percents
         if not percents:
             percents = [decimal_to_float(item.target_percent)] * item.sets
@@ -40,6 +43,7 @@ def serialize_exercise(exercise: PersonalExercise) -> dict[str, Any]:
                 "week_no": item.week_no,
                 "sets": item.sets,
                 "target_reps": item.target_reps,
+                "target_reps_list": reps_list,
                 "target_percent": decimal_to_float(item.target_percent),
                 "target_percents": percents,
             }

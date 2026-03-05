@@ -149,6 +149,10 @@ def _task_payload(
     week_plan = _week_plan_for_exercise(exercise, week_no)
     if set_index < 1:
         raise ValueError("set_index must be >= 1")
+    if week_plan.target_reps_list and len(week_plan.target_reps_list) >= set_index:
+        target_reps = int(week_plan.target_reps_list[set_index - 1])
+    else:
+        target_reps = week_plan.target_reps
     if week_plan.target_percents and len(week_plan.target_percents) >= set_index:
         target_percent = Decimal(str(week_plan.target_percents[set_index - 1]))
     else:
@@ -162,7 +166,7 @@ def _task_payload(
         "exercise_name": exercise.name,
         "kind": exercise.kind.value,
         "set_index": set_index,
-        "planned_reps": week_plan.target_reps,
+        "planned_reps": target_reps,
         "planned_weight_kg": float(planned_weight),
         "target_percent": float(target_percent),
     }

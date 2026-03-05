@@ -3,7 +3,8 @@ import { apiDelete, apiGet, apiPost, apiPut, errorMessage, setToast } from './ap
 interface WeekPlanEntry {
   week_no: number;
   sets: number;
-  target_reps: number;
+  target_reps?: number;
+  target_reps_list: number[];
   target_percent?: number;
   target_percents: number[];
 }
@@ -56,6 +57,12 @@ const DEFAULT_WEEK_PERCENTS: Record<number, number[]> = {
   3: [40, 50, 60, 75, 85, 95],
   4: [40, 40, 50, 50, 60, 60],
 };
+const DEFAULT_WEEK_REPS: Record<number, number[]> = {
+  1: [5, 5, 5, 5, 5, 5],
+  2: [5, 5, 5, 3, 3, 3],
+  3: [5, 5, 5, 5, 3, 1],
+  4: [5, 5, 5, 5, 5, 5],
+};
 
 function renderWeekPlanInputs(): void {
   weekPlanGrid.innerHTML = '';
@@ -63,12 +70,13 @@ function renderWeekPlanInputs(): void {
     const wrapper = document.createElement('div');
     wrapper.className = 'item-row';
     const defaults = DEFAULT_WEEK_PERCENTS[week];
+    const defaultReps = DEFAULT_WEEK_REPS[week];
 
     wrapper.innerHTML = `
       <div>
         <strong>Week ${week}</strong>
         <label>Sets<input type="number" min="1" step="1" data-week="${week}" data-field="sets" value="6"></label>
-        <label>Target reps<input type="number" min="1" step="1" data-week="${week}" data-field="target_reps" value="5"></label>
+        <label>Set reps list<input type="text" data-week="${week}" data-field="target_reps_list" value="${defaultReps.join(', ')}"></label>
         <label>Set % list<input type="text" data-week="${week}" data-field="target_percents" value="${defaults.join(', ')}"></label>
       </div>
     `;
@@ -101,7 +109,12 @@ function weekPlanFromInputs(): WeekPlanEntry[] {
   const result: WeekPlanEntry[] = [];
   for (let week = 1; week <= 4; week += 1) {
     const sets = Number(mustInput(`[data-week="${week}"][data-field="sets"]`).value);
-    const targetReps = Number(mustInput(`[data-week="${week}"][data-field="target_reps"]`).value);
+    const repsRaw = mustInput(`[data-week="${week}"][data-field="target_reps_list"]`).value;
+    const targetRepsList = repsRaw
+      .split(/[,\s]+/)
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+      .map((value) => Number(value));
     const percentsRaw = mustInput(`[data-week="${week}"][data-field="target_percents"]`).value;
     const targetPercents = percentsRaw
       .split(/[,\s]+/)
@@ -112,7 +125,7 @@ function weekPlanFromInputs(): WeekPlanEntry[] {
     result.push({
       week_no: week,
       sets,
-      target_reps: targetReps,
+      target_reps_list: targetRepsList,
       target_percents: targetPercents,
     });
   }
@@ -158,7 +171,10 @@ function fillForm(exercise: ExerciseRecord): void {
 
     exercise.week_plan.forEach((week) => {
       mustInput(`[data-week="${week.week_no}"][data-field="sets"]`).value = String(week.sets);
-      mustInput(`[data-week="${week.week_no}"][data-field="target_reps"]`).value = String(week.target_reps);
+      const reps = week.target_reps_list?.length
+        ? week.target_reps_list
+        : [week.target_reps ?? 0];
+      mustInput(`[data-week="${week.week_no}"][data-field="target_reps_list"]`).value = reps.join(', ');
       const percents = week.target_percents?.length
         ? week.target_percents
         : [week.target_percent ?? 0];

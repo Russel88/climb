@@ -203,6 +203,7 @@ def create_exercise():
                 week_no=week["week_no"],
                 sets=week["sets"],
                 target_reps=week["target_reps"],
+                target_reps_list=list(week["target_reps_list"]),
                 target_percent=week["target_percent"],
                 target_percents=[float(value) for value in week["target_percents"]],
             )
@@ -246,6 +247,7 @@ def update_exercise(exercise_id: int):
                 week_no=week["week_no"],
                 sets=week["sets"],
                 target_reps=week["target_reps"],
+                target_reps_list=list(week["target_reps_list"]),
                 target_percent=week["target_percent"],
                 target_percents=[float(value) for value in week["target_percents"]],
             )

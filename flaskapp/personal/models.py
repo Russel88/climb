@@ -95,6 +95,7 @@ class PersonalExerciseWeekPlan(db.Model):
     week_no: Mapped[int] = mapped_column(Integer, nullable=False)
     sets: Mapped[int] = mapped_column(Integer, nullable=False)
     target_reps: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_reps_list: Mapped[Optional[List[int]]] = mapped_column(JSON, nullable=True)
     target_percent: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False)
     target_percents: Mapped[Optional[List[float]]] = mapped_column(JSON, nullable=True)
 
