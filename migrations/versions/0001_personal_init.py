@@ -24,13 +24,6 @@ def upgrade() -> None:
     workout_source = sa.Enum("template", "ad_hoc", name="workoutsource")
     bodyweight_source = sa.Enum("workout_start", "manual", name="bodyweightsource")
 
-    bind = op.get_bind()
-    exercise_kind.create(bind, checkfirst=True)
-    load_kind.create(bind, checkfirst=True)
-    workout_mode.create(bind, checkfirst=True)
-    workout_source.create(bind, checkfirst=True)
-    bodyweight_source.create(bind, checkfirst=True)
-
     op.create_table(
         "personal_exercise",
         sa.Column("id", sa.Integer(), nullable=False),
