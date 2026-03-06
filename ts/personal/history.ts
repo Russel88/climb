@@ -101,7 +101,7 @@ function renderExerciseHistory(payload: ExerciseHistoryResponse): void {
     Array.from(maxByDay.values()).forEach((log) => {
       historyResult.appendChild(
         line(
-          `${log.date}: max planned ${log.planned_weight_kg} kg, target ${log.planned_reps}, actual ${log.actual_reps}`,
+          `${log.date}: max ${log.planned_weight_kg} kg, target ${log.planned_reps}, actual ${log.actual_reps}`,
         ),
       );
     });
