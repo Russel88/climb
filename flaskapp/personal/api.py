@@ -97,7 +97,7 @@ def _validation_error(exc: ValidationError):
 @personal_api_bp.errorhandler(IntegrityError)
 def _integrity_error(_: IntegrityError):
     db.session.rollback()
-    return _error("Cannot delete exercise because it is used in templates or workout history", 409)
+    return _error("Database integrity error", 409)
 
 
 @personal_api_bp.errorhandler(Exception)
@@ -215,6 +215,26 @@ def create_exercise():
     return jsonify(serialize_exercise(exercise)), 201
 
 
+def _sync_week_plans(exercise: PersonalExercise, weeks: list[dict[str, Any]]) -> None:
+    existing_by_week = {week.week_no: week for week in exercise.week_plans}
+    incoming_week_numbers = {week["week_no"] for week in weeks}
+
+    for week_no, week_plan in list(existing_by_week.items()):
+        if week_no not in incoming_week_numbers:
+            exercise.week_plans.remove(week_plan)
+
+    for week in weeks:
+        week_plan = existing_by_week.get(week["week_no"])
+        if week_plan is None:
+            week_plan = PersonalExerciseWeekPlan(week_no=week["week_no"])
+            exercise.week_plans.append(week_plan)
+        week_plan.sets = week["sets"]
+        week_plan.target_reps = week["target_reps"]
+        week_plan.target_reps_list = list(week["target_reps_list"])
+        week_plan.target_percent = week["target_percent"]
+        week_plan.target_percents = [float(value) for value in week["target_percents"]]
+
+
 @personal_api_bp.route("/exercises/<int:exercise_id>", methods=["GET"])
 def get_exercise(exercise_id: int):
     result = _exercise_or_404(exercise_id)
@@ -232,26 +252,17 @@ def update_exercise(exercise_id: int):
 
     payload = validate_exercise_payload(request.get_json(silent=True))
 
+    if payload["kind"] != exercise.kind:
+        raise ValidationError("kind cannot be changed after exercise creation")
+
     exercise.name = payload["name"]
-    exercise.kind = payload["kind"]
     exercise.load_kind = payload["load_kind"]
     exercise.target_added_weight_kg = payload["target_added_weight_kg"]
     exercise.increment_step_kg = payload["increment_step_kg"]
     exercise.rounding_step_kg = payload["rounding_step_kg"]
     exercise.is_active = payload["is_active"]
 
-    exercise.week_plans.clear()
-    for week in payload["week_plan"]:
-        exercise.week_plans.append(
-            PersonalExerciseWeekPlan(
-                week_no=week["week_no"],
-                sets=week["sets"],
-                target_reps=week["target_reps"],
-                target_reps_list=list(week["target_reps_list"]),
-                target_percent=week["target_percent"],
-                target_percents=[float(value) for value in week["target_percents"]],
-            )
-        )
+    _sync_week_plans(exercise, payload["week_plan"])
 
     db.session.commit()
     return jsonify(serialize_exercise(exercise))
@@ -263,7 +274,11 @@ def delete_exercise(exercise_id: int):
     if isinstance(result, tuple):
         return result
     db.session.delete(result)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return _error("Cannot delete exercise because it is used in templates or workout history", 409)
     return jsonify({"deleted": exercise_id})
 
 
@@ -355,7 +370,9 @@ def _resolve_session_exercise_ids(payload: dict[str, Any]) -> tuple[WorkoutSourc
         template = db.session.get(PersonalWorkoutTemplate, int(template_id))
         if template is None:
             raise ValidationError("template not found")
-        ordered_exercise_ids = [item.exercise_id for item in template.items]
+        ordered_exercise_ids = [item.exercise_id for item in template.items if item.exercise_id is not None]
+        if not ordered_exercise_ids:
+            raise ValidationError("template has no exercises")
         return source, int(template_id), ordered_exercise_ids
 
     exercise_ids = payload.get("exercise_ids")
@@ -412,6 +429,7 @@ def preview_workout_session():
         item = PersonalWorkoutSessionItem(
             id=index,
             exercise_id=exercise.id,
+            exercise_name=exercise.name,
             position=index,
         )
         item.exercise = exercise
@@ -481,7 +499,12 @@ def create_workout_session():
 
     session_items: list[PersonalWorkoutSessionItem] = []
     for index, exercise in enumerate(exercises, start=1):
-        item = PersonalWorkoutSessionItem(session_id=session.id, exercise_id=exercise.id, position=index)
+        item = PersonalWorkoutSessionItem(
+            session_id=session.id,
+            exercise_id=exercise.id,
+            exercise_name=exercise.name,
+            position=index,
+        )
         item.exercise = exercise
         db.session.add(item)
         db.session.flush()
@@ -546,10 +569,12 @@ def complete_task(session_id: int, task_index: int):
         planned_reps = int(task.get("planned_reps"))
         set_index = int(task.get("set_index"))
 
+        exercise_name = str(task.get("exercise_name", "")).strip() or "Unknown exercise"
         log = PersonalSetLog(
             session_id=session.id,
             session_item_id=session_item_id,
             exercise_id=exercise_id,
+            exercise_name=exercise_name,
             set_index=set_index,
             planned_reps=planned_reps,
             actual_reps=actual_reps_int,
@@ -563,9 +588,11 @@ def complete_task(session_id: int, task_index: int):
         if note is not None:
             note = str(note).strip() or None
 
+        exercise_name = str(task.get("exercise_name", "")).strip() or "Unknown exercise"
         log = PersonalNonProgressiveLog(
             session_id=session.id,
             exercise_id=exercise_id,
+            exercise_name=exercise_name,
             note=note,
         )
         db.session.add(log)

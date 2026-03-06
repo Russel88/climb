@@ -144,7 +144,7 @@ class PersonalWorkoutTemplateItem(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     template_id: Mapped[int] = mapped_column(ForeignKey("personal_workout_template.id", ondelete="CASCADE"), nullable=False)
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("personal_exercise.id", ondelete="RESTRICT"), nullable=False)
+    exercise_id: Mapped[int] = mapped_column(ForeignKey("personal_exercise.id", ondelete="CASCADE"), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
     template: Mapped[PersonalWorkoutTemplate] = relationship(back_populates="items")
@@ -183,7 +183,11 @@ class PersonalWorkoutSessionItem(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="CASCADE"), nullable=False)
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("personal_exercise.id", ondelete="RESTRICT"), nullable=False)
+    exercise_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("personal_exercise.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    exercise_name: Mapped[str] = mapped_column(String(120), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
     session: Mapped[PersonalWorkoutSession] = relationship(back_populates="items")
@@ -196,7 +200,11 @@ class PersonalSetLog(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="CASCADE"), nullable=False)
     session_item_id: Mapped[int] = mapped_column(ForeignKey("personal_workout_session_item.id", ondelete="CASCADE"), nullable=False)
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("personal_exercise.id", ondelete="RESTRICT"), nullable=False)
+    exercise_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("personal_exercise.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    exercise_name: Mapped[str] = mapped_column(String(120), nullable=False)
     set_index: Mapped[int] = mapped_column(Integer, nullable=False)
     planned_reps: Mapped[int] = mapped_column(Integer, nullable=False)
     actual_reps: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -211,7 +219,11 @@ class PersonalNonProgressiveLog(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="CASCADE"), nullable=False)
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("personal_exercise.id", ondelete="RESTRICT"), nullable=False)
+    exercise_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("personal_exercise.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    exercise_name: Mapped[str] = mapped_column(String(120), nullable=False)
     performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

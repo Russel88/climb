@@ -133,12 +133,16 @@ def _task_payload(
     bodyweight_kg: Decimal | None,
 ) -> dict[str, Any]:
     exercise = session_item.exercise
+    exercise_name = exercise.name if exercise is not None else session_item.exercise_name
+
+    if exercise is None:
+        raise ValueError("session item exercise is missing")
 
     if exercise.kind == ExerciseKind.NON_PROGRESSIVE:
         return {
             "session_item_id": session_item.id,
             "exercise_id": exercise.id,
-            "exercise_name": exercise.name,
+            "exercise_name": exercise_name,
             "kind": exercise.kind.value,
             "set_index": 1,
             "planned_reps": None,
@@ -163,7 +167,7 @@ def _task_payload(
     return {
         "session_item_id": session_item.id,
         "exercise_id": exercise.id,
-        "exercise_name": exercise.name,
+        "exercise_name": exercise_name,
         "kind": exercise.kind.value,
         "set_index": set_index,
         "planned_reps": target_reps,
@@ -398,6 +402,7 @@ def exercise_history(exercise_id: int, start_day: date, end_day: date) -> dict[s
                 "actual_reps": log.actual_reps,
                 "planned_weight_kg": float(log.planned_weight_kg),
                 "logged_weight_kg": float(log.planned_weight_kg),
+                "exercise_name": log.exercise_name,
                 "cycle_number": log.cycle_number,
                 "cycle_week": log.cycle_week,
             }
@@ -407,6 +412,7 @@ def exercise_history(exercise_id: int, start_day: date, end_day: date) -> dict[s
             {
                 "date": log.performed_at.date().isoformat(),
                 "performed_at": log.performed_at.isoformat(),
+                "exercise_name": log.exercise_name,
                 "note": log.note,
             }
             for log in non_progressive_logs
@@ -421,22 +427,35 @@ def month_history(year: int, month: int) -> dict[str, Any]:
     else:
         end = date(year, month + 1, 1) - timedelta(days=1)
 
-    sessions_statement = (
-        select(PersonalWorkoutSession)
+    set_logs_statement = (
+        select(PersonalSetLog)
         .where(
             and_(
-                PersonalWorkoutSession.session_date >= start,
-                PersonalWorkoutSession.session_date <= end,
+                PersonalSetLog.performed_at >= datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
+                PersonalSetLog.performed_at <= datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc),
             )
         )
-        .order_by(PersonalWorkoutSession.session_date.asc())
+        .order_by(PersonalSetLog.performed_at.asc())
     )
-    sessions = db.session.execute(sessions_statement).scalars().all()
+    set_logs = db.session.execute(set_logs_statement).scalars().all()
+
+    non_progressive_logs_statement = (
+        select(PersonalNonProgressiveLog)
+        .where(
+            and_(
+                PersonalNonProgressiveLog.performed_at >= datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
+                PersonalNonProgressiveLog.performed_at <= datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc),
+            )
+        )
+        .order_by(PersonalNonProgressiveLog.performed_at.asc())
+    )
+    non_progressive_logs = db.session.execute(non_progressive_logs_statement).scalars().all()
 
     exercises_by_day: dict[date, set[str]] = defaultdict(set)
-    for session in sessions:
-        for item in session.items:
-            exercises_by_day[session.session_date].add(item.exercise.name)
+    for log in set_logs:
+        exercises_by_day[log.performed_at.date()].add(log.exercise_name)
+    for log in non_progressive_logs:
+        exercises_by_day[log.performed_at.date()].add(log.exercise_name)
 
     notes_statement = (
         select(PersonalDailyNote)

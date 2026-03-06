@@ -71,7 +71,7 @@ def serialize_template(template: PersonalWorkoutTemplate) -> dict[str, Any]:
                 "id": item.id,
                 "exercise_id": item.exercise_id,
                 "position": item.position,
-                "exercise_name": item.exercise.name,
+                "exercise_name": item.exercise.name if item.exercise is not None else "Unknown exercise",
             }
             for item in template.items
         ],

@@ -97,6 +97,7 @@ function clearForm(): void {
   exerciseIdInput.value = '';
   nameInput.value = '';
   kindSelect.value = 'progressive';
+  kindSelect.disabled = false;
   loadKindSelect.value = 'external';
   targetWeightInput.value = '';
   incrementStepInput.value = '';
@@ -157,6 +158,7 @@ function fillForm(exercise: ExerciseRecord): void {
   exerciseIdInput.value = String(exercise.id);
   nameInput.value = exercise.name;
   kindSelect.value = exercise.kind;
+  kindSelect.disabled = true;
   toggleProgressiveFields();
 
   if (exercise.kind === 'progressive') {
