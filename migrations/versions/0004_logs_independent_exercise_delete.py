@@ -1,6 +1,6 @@
 """Decouple logs from exercises and cascade template references on delete
 
-Revision ID: 0004_logs_independent_exercise_delete
+Revision ID: 0004_logs_indep_delete
 Revises: 0003_week_set_reps
 Create Date: 2026-03-06 00:00:02.000000
 
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0004_logs_independent_exercise_delete"
+revision = "0004_logs_indep_delete"
 down_revision = "0003_week_set_reps"
 branch_labels = None
 depends_on = None
