@@ -46,12 +46,13 @@ function renderExerciseSelector(selectedExerciseIds: number[] = []): void {
 
   exercises.forEach((exercise, index) => {
     const row = document.createElement('div');
-    row.className = 'item-row';
+    row.className = 'item-row selector-row';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = String(exercise.id);
     checkbox.checked = selectedExerciseIds.includes(exercise.id);
+    checkbox.className = 'selector-check';
 
     const position = document.createElement('input');
     position.type = 'number';
@@ -61,10 +62,11 @@ function renderExerciseSelector(selectedExerciseIds: number[] = []): void {
         ? selectedExerciseIds.indexOf(exercise.id) + 1
         : index + 1,
     );
-    position.style.maxWidth = '4.5rem';
+    position.className = 'selector-position';
     position.dataset.role = 'position';
 
     const text = document.createElement('span');
+    text.className = 'selector-label';
     text.textContent = `${exercise.name} (${exercise.kind})`;
 
     row.append(checkbox, text, position);
