@@ -142,13 +142,19 @@ function renderPreview(data) {
   previewPanel.innerHTML = "";
   previewPanel.appendChild(line(`Cycle ${data.cycle_number}, week ${data.cycle_week}`));
   previewPanel.appendChild(line(`Tasks: ${data.task_count}`));
-  if (data.first_task) {
-    previewPanel.appendChild(
-      line(
-        `First: ${data.first_task.exercise_name}${data.first_task.planned_weight_kg == null ? "" : `, ${data.first_task.planned_weight_kg} kg`}${data.first_task.planned_reps == null ? "" : `, ${data.first_task.planned_reps} reps`}`
-      )
-    );
-  }
+  data.tasks.forEach((task, index) => {
+    const details = [`${index + 1}. ${task.exercise_name}`];
+    if (task.set_index != null) {
+      details.push(`set ${task.set_index}`);
+    }
+    if (task.planned_weight_kg != null) {
+      details.push(`${task.planned_weight_kg} kg`);
+    }
+    if (task.planned_reps != null) {
+      details.push(`${task.planned_reps} reps`);
+    }
+    previewPanel.appendChild(line(details.join(" | ")));
+  });
 }
 function line(text) {
   const element = document.createElement("div");

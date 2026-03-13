@@ -144,7 +144,7 @@ def _task_payload(
             "exercise_id": exercise.id,
             "exercise_name": exercise_name,
             "kind": exercise.kind.value,
-            "set_index": 1,
+            "set_index": set_index,
             "planned_reps": None,
             "planned_weight_kg": None,
             "target_percent": None,
@@ -198,12 +198,26 @@ def build_task_plan(
     if mode != WorkoutMode.INTERLEAVED:
         raise ValueError("invalid mode")
 
+    progressive_set_counts: list[int] = []
+    has_non_progressive = False
+    for session_item in session_items:
+        exercise = session_item.exercise
+        if exercise.kind == ExerciseKind.NON_PROGRESSIVE:
+            has_non_progressive = True
+        else:
+            week_plan = _week_plan_for_exercise(exercise, cycle_week)
+            progressive_set_counts.append(week_plan.sets)
+
+    non_progressive_target_sets = 1
+    if has_non_progressive and progressive_set_counts:
+        non_progressive_target_sets = max(progressive_set_counts)
+
     remaining_sets: dict[int, int] = {}
     next_set_index: dict[int, int] = {}
     for session_item in session_items:
         exercise = session_item.exercise
         if exercise.kind == ExerciseKind.NON_PROGRESSIVE:
-            remaining_sets[session_item.id] = 1
+            remaining_sets[session_item.id] = non_progressive_target_sets
         else:
             week_plan = _week_plan_for_exercise(exercise, cycle_week)
             remaining_sets[session_item.id] = week_plan.sets
@@ -392,6 +406,24 @@ def exercise_history(exercise_id: int, start_day: date, end_day: date) -> dict[s
     )
     non_progressive_logs = db.session.execute(non_progressive_statement).scalars().all()
 
+    non_progressive_by_day: dict[str, dict[str, Any]] = {}
+    for log in non_progressive_logs:
+        day = log.performed_at.date().isoformat()
+        current = non_progressive_by_day.get(day)
+        if current is None:
+            non_progressive_by_day[day] = {
+                "date": day,
+                "performed_at": log.performed_at.isoformat(),
+                "exercise_name": log.exercise_name,
+                "set_count": 1,
+                "note": log.note,
+            }
+            continue
+
+        current["set_count"] += 1
+        if log.note:
+            current["note"] = log.note
+
     return {
         "progressive_logs": [
             {
@@ -408,15 +440,7 @@ def exercise_history(exercise_id: int, start_day: date, end_day: date) -> dict[s
             }
             for log in set_logs
         ],
-        "non_progressive_logs": [
-            {
-                "date": log.performed_at.date().isoformat(),
-                "performed_at": log.performed_at.isoformat(),
-                "exercise_name": log.exercise_name,
-                "note": log.note,
-            }
-            for log in non_progressive_logs
-        ],
+        "non_progressive_logs": list(non_progressive_by_day.values()),
     }
 
 

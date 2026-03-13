@@ -37,7 +37,8 @@ async function loadBodyweight(): Promise<void> {
   const payload = await apiGet<BodyweightLatest>('/personal/api/bodyweight/latest');
   if (payload.bodyweight_kg != null) {
     manualBodyweight.value = String(payload.bodyweight_kg);
-    setToast(bodyweightStatus, `Latest: ${payload.bodyweight_kg} kg (${payload.measured_at})`);
+    const loggedDate = payload.measured_at ? payload.measured_at.slice(0, 10) : '';
+    setToast(bodyweightStatus, `Latest: ${payload.bodyweight_kg} kg${loggedDate ? ` (${loggedDate})` : ''}`);
   }
 }
 

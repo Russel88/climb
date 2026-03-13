@@ -55,6 +55,9 @@ a {
 }
 
 .menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
   border: 1px solid var(--border);
@@ -67,6 +70,19 @@ a {
 
 .menu-toggle:hover {
   border-color: #3a4e73;
+}
+
+.hamburger-icon {
+  display: inline-grid;
+  gap: 0.2rem;
+}
+
+.hamburger-icon span {
+  display: block;
+  width: 1rem;
+  height: 2px;
+  border-radius: 99px;
+  background: currentColor;
 }
 
 .app-title {

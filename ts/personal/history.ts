@@ -15,6 +15,7 @@ interface ProgressiveLog {
 
 interface NonProgressiveLog {
   date: string;
+  set_count?: number;
   note?: string | null;
 }
 
@@ -109,7 +110,8 @@ function renderExerciseHistory(payload: ExerciseHistoryResponse): void {
 
   if (payload.non_progressive_logs.length) {
     payload.non_progressive_logs.forEach((log) => {
-      historyResult.appendChild(line(`${log.date}: completed${log.note ? ` (${log.note})` : ''}`));
+      const setText = (log.set_count ?? 1) > 1 ? ` (${log.set_count} sets)` : '';
+      historyResult.appendChild(line(`${log.date}: completed${setText}${log.note ? ` - ${log.note}` : ''}`));
     });
   }
 
