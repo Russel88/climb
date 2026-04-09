@@ -1,0 +1,13 @@
+{
+  "name": "climb-personal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild ts/personal/main.ts ts/personal/dashboard.ts ts/personal/exercises.ts ts/personal/templates.ts ts/personal/workout-planner.ts ts/personal/workout-run.ts ts/personal/history.ts ts/personal/settings.ts --bundle --format=esm --target=es2020 --outdir=flaskapp/static/personal/js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.8",
+    "typescript": "^5.9.2"
+  }
+}

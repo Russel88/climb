@@ -1,0 +1,22 @@
+{% extends "personal/base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Cycle</h2>
+  <div id="settingsCycleStatus" class="stack"></div>
+  <button id="resetCycle" type="button">Reset cycle to current Monday (week 1)</button>
+</section>
+
+<section class="card">
+  <h2>Bodyweight</h2>
+  <form id="bodyweightForm" class="stack inline-form">
+    <label>Bodyweight (kg)<input id="manualBodyweight" type="number" step="0.01"></label>
+    <button type="submit">Save bodyweight</button>
+  </form>
+  <div id="bodyweightStatus"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='personal/js/settings.js') }}"></script>
+{% endblock %}

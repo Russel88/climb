@@ -1,0 +1,46 @@
+{% extends "personal/base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Workout Planner</h2>
+  <form id="workoutPlannerForm" class="stack">
+    <label>Source
+      <select id="sessionSource">
+        <option value="ad_hoc">Ad-hoc</option>
+        <option value="template">Template</option>
+      </select>
+    </label>
+
+    <label id="templateWrap" class="hidden">Template
+      <select id="templateId"></select>
+    </label>
+
+    <label>Mode
+      <select id="sessionMode">
+        <option value="sequential">Sequential</option>
+        <option value="interleaved">Interleaved</option>
+      </select>
+    </label>
+
+    <label>Date<input id="sessionDate" type="date"></label>
+    <label>Bodyweight (kg, optional unless needed)<input id="sessionBodyweight" type="number" step="0.01"></label>
+
+    <div id="exerciseSelectionWrap">
+      <h3>Exercise order</h3>
+      <div id="plannerExerciseList" class="stack"></div>
+    </div>
+
+    <button type="button" id="previewSession">Preview</button>
+    <button type="button" id="startSession">Start training</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Preview</h2>
+  <div id="sessionPreview" class="stack"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='personal/js/workout-planner.js') }}"></script>
+{% endblock %}

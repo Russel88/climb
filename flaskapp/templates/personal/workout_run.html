@@ -1,0 +1,21 @@
+{% extends "personal/base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Active Workout</h2>
+  <p>Session ID: <strong id="sessionId">{{ session_id }}</strong></p>
+  <div id="taskCard" class="stack"></div>
+
+  <form id="taskForm" class="stack">
+    <label id="repsWrap">Actual reps<input id="actualReps" type="number" min="0"></label>
+    <label id="noteWrap" class="hidden">Note<input id="taskNote" type="text"></label>
+    <button type="submit">Log and next</button>
+  </form>
+
+  <button id="finishSession" type="button">Finish workout</button>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='personal/js/workout-run.js') }}"></script>
+{% endblock %}

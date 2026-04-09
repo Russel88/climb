@@ -1,10 +1,19 @@
-from flask import Flask, render_template, request, jsonify, Response
-from functools import wraps
-import sqlite3
-import os
-import json  # ✅ added to handle JSON encoding/decoding
+from __future__ import annotations
 
-def create_app():
+import os
+import sqlite3
+
+from flask import Flask, jsonify, render_template, request
+
+from flaskapp.extensions import db
+from flaskapp.personal import personal_api_bp, personal_bp
+
+
+def _default_personal_db_url() -> str:
+    return "postgresql+psycopg://postgres:postgres@localhost:5432/climb_personal"
+
+
+def create_app() -> Flask:
     app = Flask(__name__)
     
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -13,18 +22,24 @@ def create_app():
     WEIGHTS_FILE = os.path.join(BASE_DIR, "weights.json")
 
 
-    # Initialize the database
-    def init_db():
-        db_path = os.path.join(app.instance_path, 'database.db')
+    app.config.setdefault("SQLALCHEMY_DATABASE_URI", os.getenv("PERSONAL_DATABASE_URL", _default_personal_db_url()))
+    app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+
+    db.init_app(app)
+
+    def init_climb_db() -> None:
+        db_path = os.path.join(app.instance_path, "database.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 selected_objects TEXT NOT NULL
             )
-        ''')
+            """
+        )
         conn.commit()
         conn.close()
 
@@ -33,42 +48,45 @@ def create_app():
     except OSError:
         pass
 
-    init_db()
+    init_climb_db()
 
-    @app.route('/')
+    app.register_blueprint(personal_bp)
+    app.register_blueprint(personal_api_bp)
+
+    @app.route("/")
     def index():
-        return render_template('index.html')
+        return render_template("index.html")
 
-    @app.route('/save_entry', methods=['POST'])
+    @app.route("/save_entry", methods=["POST"])
     def save_entry():
-        data = request.get_json()
-        name = data['name']
-        selected_objects = json.dumps(data['selected_objects'])  # ✅ changed to store as JSON string
+        data = request.get_json(silent=True) or {}
+        name = data["name"]
+        selected_objects = data["selected_objects"]
 
-        db_path = os.path.join(app.instance_path, 'database.db')
+        db_path = os.path.join(app.instance_path, "database.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO entries (name, selected_objects) VALUES (?, ?)', (name, selected_objects))
+        cursor.execute("INSERT INTO entries (name, selected_objects) VALUES (?, ?)", (name, selected_objects))
         conn.commit()
         conn.close()
-        return jsonify({'status': 'success'})
+        return jsonify({"status": "success"})
 
-    @app.route('/get_entries')
+    @app.route("/get_entries")
     def get_entries():
-        db_path = os.path.join(app.instance_path, 'database.db')
+        db_path = os.path.join(app.instance_path, "database.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM entries')
+        cursor.execute("SELECT * FROM entries")
         entries = cursor.fetchall()
         conn.close()
         return jsonify(entries)
 
-    @app.route('/entry/<int:entry_id>')
-    def get_entry(entry_id):
-        db_path = os.path.join(app.instance_path, 'database.db')
+    @app.route("/entry/<int:entry_id>")
+    def get_entry(entry_id: int):
+        db_path = os.path.join(app.instance_path, "database.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM entries WHERE id = ?', (entry_id,))
+        cursor.execute("SELECT * FROM entries WHERE id = ?", (entry_id,))
         entry = cursor.fetchone()
         conn.close()
 
@@ -78,130 +96,42 @@ def create_app():
         else:
             return jsonify({'error': 'not found'}), 404
 
-    @app.route('/create_climb')
+    @app.route("/create_climb")
     def create_entry():
-        return render_template('edit.html')
+        return render_template("edit.html")
 
-    @app.route('/update_entry/<int:entry_id>', methods=['POST'])
-    def update_entry(entry_id):
-        data = request.get_json()
-        new_name = data['name']
+    @app.route("/update_entry/<int:entry_id>", methods=["POST"])
+    def update_entry(entry_id: int):
+        data = request.get_json(silent=True) or {}
+        new_name = data["name"]
 
-        db_path = os.path.join(app.instance_path, 'database.db')
+        db_path = os.path.join(app.instance_path, "database.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('UPDATE entries SET name = ? WHERE id = ?', (new_name, entry_id))
+        cursor.execute("UPDATE entries SET name = ? WHERE id = ?", (new_name, entry_id))
         conn.commit()
         conn.close()
 
-        return jsonify({'status': 'success'})
+        return jsonify({"status": "success"})
 
-    @app.route('/delete_entry/<int:entry_id>', methods=['POST'])
-    def delete_entry(entry_id):
-        db_path = os.path.join(app.instance_path, 'database.db')
+    @app.route("/delete_entry/<int:entry_id>", methods=["POST"])
+    def delete_entry(entry_id: int):
+        db_path = os.path.join(app.instance_path, "database.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM entries WHERE id = ?', (entry_id,))
+        cursor.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
         conn.commit()
         conn.close()
 
-        return jsonify({'status': 'success'})
-    
-    
-    def load_json(filename):
-        if os.path.exists(filename):
-            with open(filename) as f:
-                return json.load(f)
-        return {}
+        return jsonify({"status": "success"})
 
-    def save_json(filename, data):
-        with open(filename, "w") as f:
-            json.dump(data, f, indent=2)
+    @app.cli.command("personal-db-create")
+    def personal_db_create():
+        """Create personal training tables (for local bootstrap only)."""
+        from flaskapp.personal import models as _personal_models  # noqa: F401
 
-    @app.route("/personal")
-    def personal():
-        return render_template("personal.html")
-
-    @app.route("/api/program", methods=["GET", "POST"])
-    def program_api():
-        if request.method == "POST":
-            new_program = request.json
-            save_json(TRAINING_FILE, new_program)
-            return jsonify({"status": "program updated"})
-        else:
-            program = load_json(TRAINING_FILE)
-            return jsonify(program)
-
-    @app.route("/api/log", methods=["GET", "POST"])
-    def log_api():
-        if request.method == "POST":
-            new_entry = request.json
-            week = str(new_entry.get("week"))
-            day = str(new_entry.get("day"))
-            exercises = new_entry.get("exercises", [])
-
-            log = load_json(LOG_FILE)
-            if not log or "entries" not in log:
-                log = {"entries": {}}
-
-            if week not in log["entries"]:
-                log["entries"][week] = {}
-            if day not in log["entries"][week]:
-                log["entries"][week][day] = []
-
-            # Replace exercises for this day with the new log
-            log["entries"][week][day] = exercises
-
-            save_json(LOG_FILE, log)
-            return jsonify({"status": "saved", "log": log})
-
-        else:
-            log = load_json(LOG_FILE)
-            if not log:
-                log = {"entries": {}}
-            return jsonify(log)
-
-    @app.route("/api/reset_cycle", methods=["POST"])
-    def reset_cycle():
-        save_json(LOG_FILE, {"entries": {}})
-        return jsonify({"status": "cycle reset"})
-
-    @app.route("/personal/log_summary")
-    def log_summary_page():
-        return render_template("log_summary.html")
-
-    @app.route("/api/log_summary")
-    def get_log_summary():
-        logs = load_json(LOG_FILE)
-        program = load_json(TRAINING_FILE)
-        return jsonify({"program": program, "logs": logs})
-
-    @app.route("/personal/edit_program")
-    def edit_program_page():
-        return render_template("edit_program.html")
-
-    @app.route("/api/program", methods=["POST"])
-    def update_program():
-        new_program = request.json
-        save_json(TRAINING_FILE, new_program)
-        return jsonify({"status": "program updated"})
-
-    @app.route("/api/weights", methods=["GET", "POST"])
-    def weights_api():
-        if request.method == "POST":
-            new_weights = request.json  # Expecting a dict: { "Squat": 105, "Bench Press": 60 }
-            if not isinstance(new_weights, dict):
-                return jsonify({"status": "error", "message": "Invalid data format"}), 400
-
-            # Save to weights.json
-            save_json(WEIGHTS_FILE, new_weights)
-            return jsonify({"status": "saved"})
-
-        else:  # GET request
-            weights = load_json(WEIGHTS_FILE)
-            if not weights:
-                weights = {}
-            return jsonify(weights)
+        db.create_all()
+        print("Personal training tables created.")
 
     return app
 

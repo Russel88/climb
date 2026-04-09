@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page_title }} | Personal Training</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='personal/css/personal.css') }}">
+</head>
+<body>
+  <header class="app-header">
+    <button id="menuToggle" class="menu-toggle" aria-label="Open menu" aria-expanded="false">
+      <span class="hamburger-icon" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+    </button>
+    <h1 class="app-title">Personal Training</h1>
+  </header>
+
+  <aside id="mobileNav" class="mobile-nav" aria-hidden="true">
+    <nav>
+      <a href="{{ url_for('personal.dashboard_page') }}" class="nav-link {% if active_nav == 'dashboard' %}is-active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('personal.exercises_page') }}" class="nav-link {% if active_nav == 'exercises' %}is-active{% endif %}">Exercises</a>
+      <a href="{{ url_for('personal.templates_page') }}" class="nav-link {% if active_nav == 'templates' %}is-active{% endif %}">Templates</a>
+      <a href="{{ url_for('personal.workout_planner_page') }}" class="nav-link {% if active_nav == 'workout' %}is-active{% endif %}">Workout</a>
+      <a href="{{ url_for('personal.history_page') }}" class="nav-link {% if active_nav == 'history' %}is-active{% endif %}">History</a>
+      <a href="{{ url_for('personal.settings_page') }}" class="nav-link {% if active_nav == 'settings' %}is-active{% endif %}">Settings</a>
+    </nav>
+  </aside>
+
+  <main class="page-shell">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script type="module" src="{{ url_for('static', filename='personal/js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
