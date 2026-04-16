@@ -1,11 +1,12 @@
 {
   "$schema": "../../.codex-workflow/schema/session-state.schema.json",
   "schemaVersion": "1.0.0",
+  "sessionId": "2026-04-16-general",
   "session": {
-    "id": null,
-    "startedAt": null,
-    "lastActivity": null,
-    "status": "inactive"
+    "id": "2026-04-16-general",
+    "startedAt": "2026-04-16T23:01:11+0200",
+    "lastActivity": "2026-04-16T23:01:11+0200",
+    "status": "active"
   },
   "work": {
     "currentTask": null,
@@ -14,7 +15,7 @@
     "blocked": []
   },
   "git": {
-    "branch": "main",
+    "branch": "codex-test",
     "uncommittedAtStart": 0,
     "commitsThisSession": 0
   },
