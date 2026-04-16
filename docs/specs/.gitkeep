@@ -1,0 +1,11 @@
+# Technical Specifications Directory
+
+This directory contains technical specifications for features and components.
+
+## Naming Convention
+- `{feature-name}-spec.md` - Feature specifications
+- `{component-name}-design.md` - Component design documents
+- `{api-name}-api.md` - API specifications
+
+## Template
+See `/base/templates/docs/specs/feature-spec.md.template` for the standard format.

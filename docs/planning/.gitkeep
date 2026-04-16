@@ -1,0 +1,4 @@
+# This directory contains session planning files
+# - CURRENT-STATE.md: Human-readable current state
+# - session-state.json: Machine-readable session data
+# - Session-specific plan files (session-YYYY-MM-DD-HHMM.md)

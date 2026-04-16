@@ -1,0 +1,10 @@
+# Product Requirements Documents
+
+This directory contains PRDs for features and projects.
+
+## Naming Convention
+- `{feature-name}-prd.md` - Feature PRD
+- `consolidated-prd.md` - Master PRD with all features (if applicable)
+
+## Template
+See `/base/templates/knowledge/prd/feature-prd.md.template` for the standard format.

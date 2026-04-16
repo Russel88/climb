@@ -1,0 +1,28 @@
+{
+  "$schema": "../../.codex-workflow/schema/session-state.schema.json",
+  "schemaVersion": "1.0.0",
+  "session": {
+    "id": null,
+    "startedAt": null,
+    "lastActivity": null,
+    "status": "inactive"
+  },
+  "work": {
+    "currentTask": null,
+    "inProgress": [],
+    "completed": [],
+    "blocked": []
+  },
+  "git": {
+    "branch": "main",
+    "uncommittedAtStart": 0,
+    "commitsThisSession": 0
+  },
+  "blockers": [],
+  "decisions": [],
+  "notes": [],
+  "integrationConnections": {
+    "taskManagement": false,
+    "documentation": false
+  }
+}

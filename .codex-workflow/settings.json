@@ -1,0 +1,71 @@
+{
+  "$schema": "./schema/settings.schema.json",
+  "version": "1.0.0",
+  "project": {
+    "name": "climb",
+    "description": "Climbing wall and personal training app built with Flask, PostgreSQL, SQLAlchemy/Alembic, and TypeScript frontend bundles.",
+    "type": "generic",
+    "variant": "base"
+  },
+  "projectMetadata": {
+    "linear": {
+      "teamId": null,
+      "teamName": null,
+      "projectId": null,
+      "projectName": null
+    },
+    "coda": {
+      "docId": null,
+      "docName": null,
+      "pageId": null,
+      "pageName": null
+    },
+    "github": {
+      "repo": "Russel88/climb",
+      "owner": "Russel88",
+      "name": "climb"
+    }
+  },
+  "workflow": {
+    "sessionManagement": {
+      "enabled": true,
+      "autoSave": true,
+      "saveInterval": 300
+    },
+    "ciIntegration": {
+      "enabled": true,
+      "codeReview": true,
+      "securityReview": true
+    },
+    "taskManagement": {
+      "provider": null,
+      "projectKey": null,
+      "autoSync": false
+    },
+    "documentation": {
+      "provider": null,
+      "autoSync": false
+    }
+  },
+  "installation": {
+    "pluginVersion": "2.0.0",
+    "workflowVersion": "2.1.1-codex.1",
+    "variant": "base",
+    "commandSurface": "plugin-skills",
+    "taskSurface": "plugin-skills",
+    "baseExclusions": {
+      "agents": [],
+      "commands": [],
+      "tasks": []
+    }
+  },
+  "paths": {
+    "docs": "docs",
+    "knowledge": "knowledge",
+    "specs": "docs/specs",
+    "planning": "docs/planning",
+    "reports": "docs/reports",
+    "prd": "knowledge/prd",
+    "architecture": "knowledge/architecture"
+  }
+}

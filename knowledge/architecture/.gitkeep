@@ -1,0 +1,13 @@
+# Architecture Documentation
+
+This directory contains architecture documentation for the project.
+
+## Contents
+- System architecture diagrams
+- Component documentation
+- Integration documentation
+- Implementation maps
+
+## Key Files
+- `IMPLEMENTATION-MAP.md` - Maps PRDs to specs to code locations
+- `ARCHITECTURE-OVERVIEW.md` - High-level system architecture

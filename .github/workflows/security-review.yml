@@ -1,0 +1,116 @@
+# Codex Security Review Request Workflow
+# Part of the Codex Workflow System - Base Layer
+#
+# This workflow flags security-sensitive pull requests for local Codex security
+# review and posts a standard security checklist for maintainers.
+
+name: Codex Security Review Request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - '**/*.py'
+      - '**/*.go'
+      - '**/*.rs'
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/yarn.lock'
+      - '**/pnpm-lock.yaml'
+      - '**/requirements.txt'
+      - '**/Pipfile.lock'
+      - '**/go.mod'
+      - '**/go.sum'
+      - '**/Cargo.lock'
+      - '**/.env*'
+      - '**/docker-compose*.yml'
+      - '**/Dockerfile*'
+      - '**/*.sql'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to mark for security review'
+        required: true
+        type: number
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  request-security-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Get PR details
+        id: pr-details
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "pr_number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post Codex security review request
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr-details.outputs.pr_number }}
+        with:
+          script: |
+            const prNumber = Number(process.env.PR_NUMBER);
+            const marker = '<!-- codex-security-review-request -->';
+            const body = [
+              marker,
+              'Codex security review requested for this pull request.',
+              '',
+              'Recommended local follow-up:',
+              '- Open the repository in Codex.',
+              '- Run `workflow-run-security-audit` on the current changes or on this PR context.',
+              '- Focus on auth, secrets handling, dependency risk, input validation, and unsafe file or shell access.',
+              '',
+              `Suggested prompt: "Use workflow-run-security-audit on PR #${prNumber} and report critical or high-severity issues first."`
+            ].join('\n');
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              labels: ['codex-security-review-requested']
+            });
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                per_page: 100
+              }
+            );
+
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body
+              });
+            }
