@@ -29,6 +29,7 @@
             top: 0;
             left: 0;
             right: 0;
+            display: none;
         }
     </style>
 </head>
@@ -164,6 +165,8 @@
             $(document).ready(function () {
                 loadObjects(1);
                 loadObjects(2);
+                $('.object-layer').hide();
+                $('.wall-image').removeClass('active');
                 $('#wall1').addClass('active');
                 $(`.object-layer[data-wall="1"]`).show();
                 loadEntries();
