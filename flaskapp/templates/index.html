@@ -53,7 +53,7 @@
         </div>
 
         <button id="clearSelection" class="button">Fjern selektion</button>
-        <button id="createEntry" class="button">Lav nyt problem</button>
+        <button id="createEntry" class="button" data-create-url="{{ url_for('create_entry') }}">Lav nyt problem</button>
 
         <h2>Problemer:</h2>
         <ul id="entriesList"></ul>
@@ -152,7 +152,7 @@
             });
 
             $('#createEntry').on('click', function () {
-                window.location.href = 'create_climb';
+                window.location.href = $(this).data('create-url');
             });
 
             $('#clearSelection').on('click', function () {
@@ -172,4 +172,3 @@
     </div>
 </body>
 </html>
-
