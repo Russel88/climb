@@ -67,7 +67,10 @@ def create_app() -> Flask:
         db_path = os.path.join(app.instance_path, "database.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO entries (name, selected_objects) VALUES (?, ?)", (name, selected_objects))
+        cursor.execute(
+            "INSERT INTO entries (name, selected_objects) VALUES (?, ?)",
+            (name, json.dumps(selected_objects)),
+        )
         conn.commit()
         conn.close()
         return jsonify({"status": "success"})
@@ -135,5 +138,4 @@ def create_app() -> Flask:
         print("Personal training tables created.")
 
     return app
-
 
