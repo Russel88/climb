@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import json
 
 from flask import Flask, jsonify, render_template, request
 
@@ -134,6 +135,5 @@ def create_app() -> Flask:
         print("Personal training tables created.")
 
     return app
-
 
 
