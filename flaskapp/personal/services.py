@@ -354,8 +354,69 @@ def apply_cycle_suggestions(cycle_number: int, accepted_exercise_ids: set[int]) 
     return applied
 
 
+def _values_for_set_count(values: list[Any] | None, set_count: int, fallback: Any) -> list[Any]:
+    normalized = list(values or [])
+    if not normalized:
+        normalized = [fallback] * set_count
+    elif len(normalized) < set_count:
+        normalized.extend([normalized[-1]] * (set_count - len(normalized)))
+    return normalized[:set_count]
+
+
+def _highest_load_requirement(week_plan: PersonalExerciseWeekPlan) -> tuple[set[int], int]:
+    set_count = max(week_plan.sets, len(week_plan.target_percents or []), len(week_plan.target_reps_list or []), 1)
+    percents = _values_for_set_count(week_plan.target_percents, set_count, float(week_plan.target_percent))
+    reps = _values_for_set_count(week_plan.target_reps_list, set_count, week_plan.target_reps)
+
+    max_percent = max(Decimal(str(percent)) for percent in percents)
+    high_load_set_indexes = {
+        index
+        for index, percent in enumerate(percents, start=1)
+        if Decimal(str(percent)) == max_percent
+    }
+    minimum_reps = min(reps[index - 1] for index in high_load_set_indexes)
+
+    return high_load_set_indexes, minimum_reps
+
+
+def _exercise_on_track_for_cycle_increase(
+    exercise: PersonalExercise,
+    cycle_number: int,
+    current_cycle_week: int,
+) -> bool:
+    if current_cycle_week <= 1 or exercise.kind != ExerciseKind.PROGRESSIVE:
+        return False
+
+    week_plans_by_week = {week_plan.week_no: week_plan for week_plan in exercise.week_plans}
+
+    for week_no in range(1, current_cycle_week):
+        week_plan = week_plans_by_week.get(week_no)
+        if week_plan is None:
+            return False
+
+        high_load_set_indexes, minimum_reps = _highest_load_requirement(week_plan)
+        logs_statement = select(PersonalSetLog).where(
+            and_(
+                PersonalSetLog.exercise_id == exercise.id,
+                PersonalSetLog.cycle_number == cycle_number,
+                PersonalSetLog.cycle_week == week_no,
+            )
+        )
+        logs = db.session.execute(logs_statement).scalars().all()
+
+        hit_high_load_minimum = any(
+            log.set_index in high_load_set_indexes and log.actual_reps >= minimum_reps
+            for log in logs
+        )
+        if not hit_high_load_minimum:
+            return False
+
+    return True
+
+
 def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, Any]:
     current_day = reference_day or today_local()
+    snapshot = cycle_snapshot(current_day)
     week_start = monday_of(current_day)
     week_end = week_start + timedelta(days=6)
     start_at = datetime.combine(week_start, datetime.min.time(), tzinfo=timezone.utc)
@@ -399,11 +460,18 @@ def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, A
             "id": exercise.id,
             "name": exercise.name,
             "kind": exercise.kind.value,
+            "on_track_for_cycle_increase": _exercise_on_track_for_cycle_increase(
+                exercise,
+                snapshot.cycle_number,
+                snapshot.cycle_week,
+            ),
         }
 
     return {
         "week_start": week_start.isoformat(),
         "week_end": week_end.isoformat(),
+        "cycle_number": snapshot.cycle_number,
+        "cycle_week": snapshot.cycle_week,
         "logged": [serialize_status_exercise(exercise) for exercise in exercises if exercise.id in logged_ids],
         "not_logged": [serialize_status_exercise(exercise) for exercise in exercises if exercise.id not in logged_ids],
     }

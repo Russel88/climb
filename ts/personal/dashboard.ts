@@ -22,6 +22,7 @@ interface WeeklyExercise {
   id: number;
   name: string;
   kind: string;
+  on_track_for_cycle_increase: boolean;
 }
 
 interface WeeklyExerciseStatus {
@@ -93,13 +94,23 @@ function exerciseGroup(title: string, exercises: WeeklyExercise[]): HTMLDivEleme
     const row = document.createElement('div');
     row.className = 'item-row';
 
+    const summary = document.createElement('span');
+    summary.className = 'exercise-status-name';
+
+    const statusDot = document.createElement('span');
+    statusDot.className = `increase-status-dot ${exercise.on_track_for_cycle_increase ? 'is-on-track' : 'is-off-track'}`;
+    statusDot.title = exercise.on_track_for_cycle_increase
+      ? 'On track for cycle increase'
+      : 'Not on track for cycle increase';
+
     const name = document.createElement('strong');
     name.textContent = exercise.name;
 
     const kind = document.createElement('small');
     kind.textContent = exercise.kind.replace('_', ' ');
 
-    row.append(name, kind);
+    summary.append(statusDot, name);
+    row.append(summary, kind);
     group.appendChild(row);
   });
 

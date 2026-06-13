@@ -284,6 +284,32 @@ button:disabled {
   color: #8ea2c3;
 }
 
+.exercise-status-name {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.48rem;
+}
+
+.increase-status-dot {
+  display: inline-block;
+  width: 0.72rem;
+  height: 0.72rem;
+  flex: 0 0 0.72rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.increase-status-dot.is-on-track {
+  background: #35d07f;
+  box-shadow: 0 0 0 3px rgba(53, 208, 127, 0.16);
+}
+
+.increase-status-dot.is-off-track {
+  background: #ee5d73;
+  box-shadow: 0 0 0 3px rgba(238, 93, 115, 0.16);
+}
+
 .selector-row {
   display: grid;
   grid-template-columns: 1.25rem minmax(0, 1fr) 5rem;
