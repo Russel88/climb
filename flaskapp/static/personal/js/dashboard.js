@@ -58,13 +58,18 @@ function mustElement(id) {
 }
 var cycleStatus = mustElement("cycleStatus");
 var suggestions = mustElement("suggestions");
+var weeklyExerciseStatus = mustElement("weeklyExerciseStatus");
 async function loadDashboard() {
   try {
-    const state = await apiGet("/personal/api/cycle/state");
+    const [state, weeklyStatus] = await Promise.all([
+      apiGet("/personal/api/cycle/state"),
+      apiGet("/personal/api/dashboard/week-exercises")
+    ]);
     cycleStatus.innerHTML = "";
     cycleStatus.appendChild(line(`Cycle number: ${state.cycle_number}`));
     cycleStatus.appendChild(line(`Cycle week: ${state.cycle_week}`));
     cycleStatus.appendChild(line(`Week 1 anchor Monday: ${state.anchor_monday}`));
+    renderWeeklyExerciseStatus(weeklyStatus);
     if (!state.should_prompt_suggestions) {
       suggestions.innerHTML = "";
       suggestions.appendChild(line("No pending cycle increase suggestions."));
@@ -75,6 +80,34 @@ async function loadDashboard() {
   } catch (error) {
     setToast(cycleStatus, errorMessage(error), true);
   }
+}
+function renderWeeklyExerciseStatus(status) {
+  weeklyExerciseStatus.innerHTML = "";
+  weeklyExerciseStatus.appendChild(line(`${status.week_start} to ${status.week_end}`));
+  weeklyExerciseStatus.appendChild(exerciseGroup("Logged", status.logged));
+  weeklyExerciseStatus.appendChild(exerciseGroup("Not logged", status.not_logged));
+}
+function exerciseGroup(title, exercises) {
+  const group = document.createElement("div");
+  group.className = "stack";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  group.appendChild(heading);
+  if (!exercises.length) {
+    group.appendChild(line("None"));
+    return group;
+  }
+  exercises.forEach((exercise) => {
+    const row = document.createElement("div");
+    row.className = "item-row";
+    const name = document.createElement("strong");
+    name.textContent = exercise.name;
+    const kind = document.createElement("small");
+    kind.textContent = exercise.kind.replace("_", " ");
+    row.append(name, kind);
+    group.appendChild(row);
+  });
+  return group;
 }
 function renderSuggestions(list) {
   suggestions.innerHTML = "";

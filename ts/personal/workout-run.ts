@@ -113,8 +113,8 @@ taskForm.addEventListener('submit', async (event) => {
 
 finishSessionButton.addEventListener('click', async () => {
   try {
-    session = await apiPost<WorkoutSession>(`/personal/api/workout-sessions/${sessionId}/finish`, {});
-    renderSession();
+    await apiPost<WorkoutSession>(`/personal/api/workout-sessions/${sessionId}/finish`, {});
+    window.location.href = '/personal/';
   } catch (error) {
     setToast(taskCard, errorMessage(error), true);
   }

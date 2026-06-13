@@ -1,11 +1,31 @@
 from __future__ import annotations
 
+from datetime import date, datetime, timezone
 from decimal import Decimal
+import os
+import tempfile
 from types import SimpleNamespace
 import unittest
 
-from flaskapp.personal.models import ExerciseKind, LoadKind, WorkoutMode
-from flaskapp.personal.services import build_task_plan, planned_weight_for_week, round_down_to_step
+from flaskapp.app import create_app
+from flaskapp.extensions import db
+from flaskapp.personal.models import (
+    ExerciseKind,
+    LoadKind,
+    PersonalExercise,
+    PersonalNonProgressiveLog,
+    PersonalSetLog,
+    PersonalWorkoutSession,
+    PersonalWorkoutSessionItem,
+    WorkoutMode,
+    WorkoutSource,
+)
+from flaskapp.personal.services import (
+    build_task_plan,
+    planned_weight_for_week,
+    round_down_to_step,
+    weekly_exercise_log_status,
+)
 
 
 class ServicesTestCase(unittest.TestCase):
@@ -79,6 +99,108 @@ class ServicesTestCase(unittest.TestCase):
         self.assertEqual(tasks[2]["planned_weight_kg"], 75.0)
         self.assertEqual(tasks[2]["planned_reps"], 3)
         self.assertEqual(tasks[4]["planned_reps"], 2)
+
+
+class WeeklyExerciseLogStatusTestCase(unittest.TestCase):
+    def setUp(self):
+        self.previous_database_url = os.environ.get("PERSONAL_DATABASE_URL")
+        fd, self.database_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        os.environ["PERSONAL_DATABASE_URL"] = f"sqlite:///{self.database_path}"
+
+        self.app = create_app()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+        if self.previous_database_url is None:
+            os.environ.pop("PERSONAL_DATABASE_URL", None)
+        else:
+            os.environ["PERSONAL_DATABASE_URL"] = self.previous_database_url
+        os.unlink(self.database_path)
+
+    def test_weekly_status_splits_active_exercises_by_current_week_logs(self):
+        pull_up = PersonalExercise(
+            name="Pull-up",
+            kind=ExerciseKind.PROGRESSIVE,
+            load_kind=LoadKind.BODYWEIGHT_EXTERNAL,
+            target_added_weight_kg=Decimal("20"),
+            increment_step_kg=Decimal("2.5"),
+            rounding_step_kg=Decimal("2.5"),
+            is_active=True,
+        )
+        dips = PersonalExercise(
+            name="Dips",
+            kind=ExerciseKind.PROGRESSIVE,
+            load_kind=LoadKind.BODYWEIGHT_EXTERNAL,
+            target_added_weight_kg=Decimal("20"),
+            increment_step_kg=Decimal("2.5"),
+            rounding_step_kg=Decimal("2.5"),
+            is_active=True,
+        )
+        mobility = PersonalExercise(name="Mobility", kind=ExerciseKind.NON_PROGRESSIVE, is_active=True)
+        inactive = PersonalExercise(name="Inactive", kind=ExerciseKind.NON_PROGRESSIVE, is_active=False)
+        db.session.add_all([pull_up, dips, mobility, inactive])
+        db.session.flush()
+
+        session = PersonalWorkoutSession(
+            session_date=date(2026, 6, 10),
+            mode=WorkoutMode.INTERLEAVED,
+            source=WorkoutSource.AD_HOC,
+            cycle_number=1,
+            cycle_week=1,
+            task_plan=[],
+            next_task_index=0,
+        )
+        db.session.add(session)
+        db.session.flush()
+
+        session_item = PersonalWorkoutSessionItem(
+            session_id=session.id,
+            exercise_id=pull_up.id,
+            exercise_name=pull_up.name,
+            position=1,
+        )
+        db.session.add(session_item)
+        db.session.flush()
+
+        performed_at = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
+        db.session.add(
+            PersonalSetLog(
+                session_id=session.id,
+                session_item_id=session_item.id,
+                exercise_id=pull_up.id,
+                exercise_name=pull_up.name,
+                set_index=1,
+                planned_reps=5,
+                actual_reps=5,
+                planned_weight_kg=Decimal("20"),
+                performed_at=performed_at,
+                cycle_number=1,
+                cycle_week=1,
+            )
+        )
+        db.session.add(
+            PersonalNonProgressiveLog(
+                session_id=session.id,
+                exercise_id=mobility.id,
+                exercise_name=mobility.name,
+                performed_at=performed_at,
+            )
+        )
+        db.session.commit()
+
+        result = weekly_exercise_log_status(date(2026, 6, 13))
+
+        self.assertEqual(result["week_start"], "2026-06-08")
+        self.assertEqual(result["week_end"], "2026-06-14")
+        self.assertEqual({item["name"] for item in result["logged"]}, {"Mobility", "Pull-up"})
+        self.assertEqual([item["name"] for item in result["not_logged"]], ["Dips"])
 
 
 if __name__ == "__main__":

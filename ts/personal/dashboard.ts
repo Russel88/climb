@@ -18,6 +18,19 @@ interface SuggestionsResponse {
   suggestions: CycleSuggestion[];
 }
 
+interface WeeklyExercise {
+  id: number;
+  name: string;
+  kind: string;
+}
+
+interface WeeklyExerciseStatus {
+  week_start: string;
+  week_end: string;
+  logged: WeeklyExercise[];
+  not_logged: WeeklyExercise[];
+}
+
 function mustElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) {
@@ -28,14 +41,20 @@ function mustElement<T extends HTMLElement>(id: string): T {
 
 const cycleStatus = mustElement<HTMLDivElement>('cycleStatus');
 const suggestions = mustElement<HTMLDivElement>('suggestions');
+const weeklyExerciseStatus = mustElement<HTMLDivElement>('weeklyExerciseStatus');
 
 async function loadDashboard(): Promise<void> {
   try {
-    const state = await apiGet<CycleState>('/personal/api/cycle/state');
+    const [state, weeklyStatus] = await Promise.all([
+      apiGet<CycleState>('/personal/api/cycle/state'),
+      apiGet<WeeklyExerciseStatus>('/personal/api/dashboard/week-exercises'),
+    ]);
+
     cycleStatus.innerHTML = '';
     cycleStatus.appendChild(line(`Cycle number: ${state.cycle_number}`));
     cycleStatus.appendChild(line(`Cycle week: ${state.cycle_week}`));
     cycleStatus.appendChild(line(`Week 1 anchor Monday: ${state.anchor_monday}`));
+    renderWeeklyExerciseStatus(weeklyStatus);
 
     if (!state.should_prompt_suggestions) {
       suggestions.innerHTML = '';
@@ -48,6 +67,43 @@ async function loadDashboard(): Promise<void> {
   } catch (error) {
     setToast(cycleStatus, errorMessage(error), true);
   }
+}
+
+function renderWeeklyExerciseStatus(status: WeeklyExerciseStatus): void {
+  weeklyExerciseStatus.innerHTML = '';
+  weeklyExerciseStatus.appendChild(line(`${status.week_start} to ${status.week_end}`));
+  weeklyExerciseStatus.appendChild(exerciseGroup('Logged', status.logged));
+  weeklyExerciseStatus.appendChild(exerciseGroup('Not logged', status.not_logged));
+}
+
+function exerciseGroup(title: string, exercises: WeeklyExercise[]): HTMLDivElement {
+  const group = document.createElement('div');
+  group.className = 'stack';
+
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+  group.appendChild(heading);
+
+  if (!exercises.length) {
+    group.appendChild(line('None'));
+    return group;
+  }
+
+  exercises.forEach((exercise) => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+
+    const name = document.createElement('strong');
+    name.textContent = exercise.name;
+
+    const kind = document.createElement('small');
+    kind.textContent = exercise.kind.replace('_', ' ');
+
+    row.append(name, kind);
+    group.appendChild(row);
+  });
+
+  return group;
 }
 
 function renderSuggestions(list: CycleSuggestion[]): void {

@@ -97,23 +97,45 @@ var DEFAULT_WEEK_PERCENTS = {
   3: [40, 50, 60, 75, 85, 95],
   4: [40, 40, 50, 50, 60, 60]
 };
+var DEFAULT_BODYWEIGHT_WEEK_PERCENTS = {
+  1: [70, 80, 85, 87, 89, 91],
+  2: [70, 80, 85, 88, 91, 94],
+  3: [70, 80, 85, 89, 93, 97],
+  4: [70, 70, 80, 80, 90, 90]
+};
 var DEFAULT_WEEK_REPS = {
   1: [5, 5, 5, 5, 5, 5],
   2: [5, 5, 5, 3, 3, 3],
   3: [5, 5, 5, 5, 3, 1],
   4: [5, 5, 5, 5, 5, 5]
 };
-function renderWeekPlanInputs() {
+function valuesForSetCount(values, setCount) {
+  if (values.length === setCount) {
+    return values;
+  }
+  if (values.length > setCount) {
+    return values.slice(0, setCount);
+  }
+  const fallback = values[values.length - 1] ?? 5;
+  return [...values, ...Array.from({ length: setCount - values.length }, () => fallback)];
+}
+function defaultWeekPercents() {
+  if (loadKindSelect.value === "bodyweight_external") {
+    return DEFAULT_BODYWEIGHT_WEEK_PERCENTS;
+  }
+  return DEFAULT_WEEK_PERCENTS;
+}
+function renderWeekPlanInputs(weekPercents = defaultWeekPercents()) {
   weekPlanGrid.innerHTML = "";
   for (let week = 1; week <= 4; week += 1) {
     const wrapper = document.createElement("div");
     wrapper.className = "item-row";
-    const defaults = DEFAULT_WEEK_PERCENTS[week];
-    const defaultReps = DEFAULT_WEEK_REPS[week];
+    const defaults = weekPercents[week] || DEFAULT_WEEK_PERCENTS[week];
+    const defaultReps = valuesForSetCount(DEFAULT_WEEK_REPS[week], defaults.length);
     wrapper.innerHTML = `
       <div>
         <strong>Week ${week}</strong>
-        <label>Sets<input type="number" min="1" step="1" data-week="${week}" data-field="sets" value="6"></label>
+        <label>Sets<input type="number" min="1" step="1" data-week="${week}" data-field="sets" value="${defaults.length}"></label>
         <label>Set reps list<input type="text" data-week="${week}" data-field="target_reps_list" value="${defaultReps.join(", ")}"></label>
         <label>Set % list<input type="text" data-week="${week}" data-field="target_percents" value="${defaults.join(", ")}"></label>
       </div>
@@ -137,7 +159,7 @@ function clearForm() {
   targetWeightInput.value = "";
   incrementStepInput.value = "";
   roundingStepInput.value = "";
-  renderWeekPlanInputs();
+  renderWeekPlanInputs(DEFAULT_WEEK_PERCENTS);
   toggleProgressiveFields();
 }
 function weekPlanFromInputs() {
@@ -238,6 +260,11 @@ async function loadExercises() {
   renderExerciseList();
 }
 kindSelect.addEventListener("change", toggleProgressiveFields);
+loadKindSelect.addEventListener("change", () => {
+  if (!exerciseIdInput.value) {
+    renderWeekPlanInputs();
+  }
+});
 resetButton.addEventListener("click", clearForm);
 form.addEventListener("submit", async (event) => {
   event.preventDefault();

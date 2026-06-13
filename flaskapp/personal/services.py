@@ -354,6 +354,61 @@ def apply_cycle_suggestions(cycle_number: int, accepted_exercise_ids: set[int]) 
     return applied
 
 
+def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, Any]:
+    current_day = reference_day or today_local()
+    week_start = monday_of(current_day)
+    week_end = week_start + timedelta(days=6)
+    start_at = datetime.combine(week_start, datetime.min.time(), tzinfo=timezone.utc)
+    end_at = datetime.combine(week_end, datetime.max.time(), tzinfo=timezone.utc)
+
+    exercises_statement = (
+        select(PersonalExercise)
+        .where(PersonalExercise.is_active.is_(True))
+        .order_by(PersonalExercise.name.asc())
+    )
+    exercises = db.session.execute(exercises_statement).scalars().all()
+
+    set_logs_statement = select(PersonalSetLog.exercise_id).where(
+        and_(
+            PersonalSetLog.performed_at >= start_at,
+            PersonalSetLog.performed_at <= end_at,
+            PersonalSetLog.exercise_id.is_not(None),
+        )
+    )
+    non_progressive_logs_statement = select(PersonalNonProgressiveLog.exercise_id).where(
+        and_(
+            PersonalNonProgressiveLog.performed_at >= start_at,
+            PersonalNonProgressiveLog.performed_at <= end_at,
+            PersonalNonProgressiveLog.exercise_id.is_not(None),
+        )
+    )
+
+    logged_ids = {
+        exercise_id
+        for exercise_id in db.session.execute(set_logs_statement).scalars().all()
+        if exercise_id is not None
+    }
+    logged_ids.update(
+        exercise_id
+        for exercise_id in db.session.execute(non_progressive_logs_statement).scalars().all()
+        if exercise_id is not None
+    )
+
+    def serialize_status_exercise(exercise: PersonalExercise) -> dict[str, Any]:
+        return {
+            "id": exercise.id,
+            "name": exercise.name,
+            "kind": exercise.kind.value,
+        }
+
+    return {
+        "week_start": week_start.isoformat(),
+        "week_end": week_end.isoformat(),
+        "logged": [serialize_status_exercise(exercise) for exercise in exercises if exercise.id in logged_ids],
+        "not_logged": [serialize_status_exercise(exercise) for exercise in exercises if exercise.id not in logged_ids],
+    }
+
+
 def get_history_window(
     range_type: str,
     value: int,

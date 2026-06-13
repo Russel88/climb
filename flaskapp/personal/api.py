@@ -38,6 +38,7 @@ from flaskapp.personal.services import (
     month_history,
     record_bodyweight,
     reset_cycle_to_current_monday,
+    weekly_exercise_log_status,
 )
 from flaskapp.personal.validation import ValidationError, validate_exercise_payload
 
@@ -174,6 +175,11 @@ def apply_suggestions():
 
     db.session.commit()
     return jsonify({"applied": applied, "cycle_number": snapshot.cycle_number})
+
+
+@personal_api_bp.route("/dashboard/week-exercises", methods=["GET"])
+def get_dashboard_week_exercises():
+    return jsonify(weekly_exercise_log_status())
 
 
 @personal_api_bp.route("/exercises", methods=["GET"])
@@ -384,7 +390,7 @@ def _resolve_session_exercise_ids(payload: dict[str, Any]) -> tuple[WorkoutSourc
 
 
 def _resolve_mode(payload: dict[str, Any]) -> WorkoutMode:
-    mode_raw = payload.get("mode", WorkoutMode.SEQUENTIAL.value)
+    mode_raw = payload.get("mode", WorkoutMode.INTERLEAVED.value)
     try:
         return WorkoutMode(mode_raw)
     except ValueError as exc:
