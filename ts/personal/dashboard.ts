@@ -98,10 +98,17 @@ function exerciseGroup(title: string, exercises: WeeklyExercise[]): HTMLDivEleme
     summary.className = 'exercise-status-name';
 
     const statusDot = document.createElement('span');
-    statusDot.className = `increase-status-dot ${exercise.on_track_for_cycle_increase ? 'is-on-track' : 'is-off-track'}`;
-    statusDot.title = exercise.on_track_for_cycle_increase
-      ? 'On track for cycle increase'
-      : 'Not on track for cycle increase';
+    const statusClass = exercise.kind === 'non_progressive'
+      ? 'is-not-progressive'
+      : exercise.on_track_for_cycle_increase
+        ? 'is-on-track'
+        : 'is-off-track';
+    statusDot.className = `increase-status-dot ${statusClass}`;
+    statusDot.title = exercise.kind === 'non_progressive'
+      ? 'Not a progressive exercise'
+      : exercise.on_track_for_cycle_increase
+        ? 'On track for cycle increase'
+        : 'Not on track for cycle increase';
 
     const name = document.createElement('strong');
     name.textContent = exercise.name;

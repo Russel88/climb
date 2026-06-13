@@ -310,6 +310,11 @@ button:disabled {
   box-shadow: 0 0 0 3px rgba(238, 93, 115, 0.16);
 }
 
+.increase-status-dot.is-not-progressive {
+  background: #8ea2c3;
+  box-shadow: 0 0 0 3px rgba(142, 162, 195, 0.14);
+}
+
 .selector-row {
   display: grid;
   grid-template-columns: 1.25rem minmax(0, 1fr) 5rem;
