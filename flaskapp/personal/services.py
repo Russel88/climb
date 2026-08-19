@@ -398,6 +398,7 @@ def _exercise_on_track_for_cycle_increase(
     exercise: PersonalExercise,
     cycle_number: int,
     current_cycle_week: int,
+    logged_this_week: bool,
 ) -> bool:
     if exercise.kind != ExerciseKind.PROGRESSIVE:
         return False
@@ -424,7 +425,7 @@ def _exercise_on_track_for_cycle_increase(
     if current_cycle_week == 1:
         # In week 1 no completed week can vouch for the exercise, so it only counts as on track
         # once it has actually been logged this week.
-        return bool(_set_logs_for_cycle_week(exercise, cycle_number, current_cycle_week))
+        return logged_this_week
 
     return True
 
@@ -479,6 +480,7 @@ def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, A
                 exercise,
                 snapshot.cycle_number,
                 snapshot.cycle_week,
+                exercise.id in logged_ids,
             ),
         }
 

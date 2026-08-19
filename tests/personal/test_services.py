@@ -220,6 +220,59 @@ class WeeklyExerciseLogStatusTestCase(unittest.TestCase):
         self.assertEqual(result["cycle_week"], 1)
         self.assertFalse(by_name["Pull-up"]["on_track_for_cycle_increase"])
 
+    def test_weekly_status_ignores_stale_first_week_logs_from_before_a_cycle_reset(self):
+        # Resetting the cycle anchor re-uses cycle 1 week 1, so logs stamped that way can predate
+        # the current week. Only logs performed this week may mark an exercise on track.
+        db.session.add(PersonalCycleState(id=1, week1_anchor_monday=date(2026, 6, 8)))
+
+        pull_up = self._progressive_exercise("Pull-up")
+        db.session.add(pull_up)
+        db.session.flush()
+
+        session = PersonalWorkoutSession(
+            session_date=date(2026, 5, 20),
+            mode=WorkoutMode.INTERLEAVED,
+            source=WorkoutSource.AD_HOC,
+            cycle_number=1,
+            cycle_week=1,
+            task_plan=[],
+            next_task_index=0,
+        )
+        db.session.add(session)
+        db.session.flush()
+
+        session_item = PersonalWorkoutSessionItem(
+            session_id=session.id,
+            exercise_id=pull_up.id,
+            exercise_name=pull_up.name,
+            position=1,
+        )
+        db.session.add(session_item)
+        db.session.flush()
+
+        db.session.add(
+            PersonalSetLog(
+                session_id=session.id,
+                session_item_id=session_item.id,
+                exercise_id=pull_up.id,
+                exercise_name=pull_up.name,
+                set_index=6,
+                planned_reps=5,
+                actual_reps=5,
+                planned_weight_kg=Decimal("20"),
+                performed_at=datetime(2026, 5, 20, 12, 0, tzinfo=timezone.utc),
+                cycle_number=1,
+                cycle_week=1,
+            )
+        )
+        db.session.commit()
+
+        result = weekly_exercise_log_status(date(2026, 6, 10))
+        by_name = {item["name"]: item for item in result["not_logged"]}
+
+        self.assertEqual(result["cycle_week"], 1)
+        self.assertFalse(by_name["Pull-up"]["on_track_for_cycle_increase"])
+
     def test_weekly_status_marks_progressive_exercise_on_track_after_previous_week_high_load_success(self):
         db.session.add(PersonalCycleState(id=1, week1_anchor_monday=date(2026, 6, 1)))
 
