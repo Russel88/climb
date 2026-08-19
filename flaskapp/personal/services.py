@@ -384,11 +384,13 @@ def _exercise_on_track_for_cycle_increase(
     cycle_number: int,
     current_cycle_week: int,
 ) -> bool:
-    if current_cycle_week <= 1 or exercise.kind != ExerciseKind.PROGRESSIVE:
+    if exercise.kind != ExerciseKind.PROGRESSIVE:
         return False
 
     week_plans_by_week = {week_plan.week_no: week_plan for week_plan in exercise.week_plans}
 
+    # Only completed weeks can put an exercise off track; the current week is still in progress,
+    # so in week 1 nothing has been missed yet.
     for week_no in range(1, current_cycle_week):
         week_plan = week_plans_by_week.get(week_no)
         if week_plan is None:

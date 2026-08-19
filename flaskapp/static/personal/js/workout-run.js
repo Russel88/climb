@@ -85,7 +85,7 @@ function renderSession() {
     details.push(`${task.planned_weight_kg} kg`);
   }
   if (task.planned_reps != null) {
-    details.push(`${task.planned_reps} reps`);
+    details.push(task.is_last_set ? `>= ${task.planned_reps} reps` : `${task.planned_reps} reps`);
   }
   taskCard.appendChild(line(details.join(" | ")));
   const progressive = task.kind === "progressive";

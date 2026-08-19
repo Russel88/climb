@@ -203,8 +203,22 @@ class WeeklyExerciseLogStatusTestCase(unittest.TestCase):
         self.assertEqual(result["week_end"], "2026-06-14")
         self.assertEqual({item["name"] for item in result["logged"]}, {"Mobility", "Pull-up"})
         self.assertEqual([item["name"] for item in result["not_logged"]], ["Dips"])
-        self.assertFalse(any(item["on_track_for_cycle_increase"] for item in result["logged"]))
-        self.assertFalse(any(item["on_track_for_cycle_increase"] for item in result["not_logged"]))
+
+        by_name = {item["name"]: item for item in result["logged"] + result["not_logged"]}
+        self.assertEqual(result["cycle_week"], 1)
+        self.assertTrue(by_name["Pull-up"]["on_track_for_cycle_increase"])
+        self.assertFalse(by_name["Mobility"]["on_track_for_cycle_increase"])
+
+    def test_weekly_status_marks_progressive_exercises_on_track_in_first_cycle_week(self):
+        db.session.add(PersonalCycleState(id=1, week1_anchor_monday=date(2026, 6, 8)))
+        db.session.add(self._progressive_exercise("Pull-up"))
+        db.session.commit()
+
+        result = weekly_exercise_log_status(date(2026, 6, 10))
+        by_name = {item["name"]: item for item in result["logged"] + result["not_logged"]}
+
+        self.assertEqual(result["cycle_week"], 1)
+        self.assertTrue(by_name["Pull-up"]["on_track_for_cycle_increase"])
 
     def test_weekly_status_marks_progressive_exercise_on_track_after_previous_week_high_load_success(self):
         db.session.add(PersonalCycleState(id=1, week1_anchor_monday=date(2026, 6, 1)))

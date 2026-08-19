@@ -5,6 +5,7 @@ interface WorkoutTask {
   exercise_name: string;
   planned_weight_kg: number | null;
   planned_reps: number | null;
+  is_last_set?: boolean;
 }
 
 interface WorkoutSession {
@@ -63,7 +64,7 @@ function renderSession(): void {
     details.push(`${task.planned_weight_kg} kg`);
   }
   if (task.planned_reps != null) {
-    details.push(`${task.planned_reps} reps`);
+    details.push(task.is_last_set ? `>= ${task.planned_reps} reps` : `${task.planned_reps} reps`);
   }
 
   taskCard.appendChild(line(details.join(' | ')));

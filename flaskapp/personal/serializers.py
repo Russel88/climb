@@ -78,11 +78,24 @@ def serialize_template(template: PersonalWorkoutTemplate) -> dict[str, Any]:
     }
 
 
+def _task_with_set_position(tasks: list[dict[str, Any]], index: int) -> dict[str, Any] | None:
+    if not 0 <= index < len(tasks):
+        return None
+
+    task = dict(tasks[index])
+    set_index = task.get("set_index")
+    last_set_index = max(
+        other.get("set_index") or 0
+        for other in tasks
+        if other.get("session_item_id") == task.get("session_item_id")
+    )
+    task["is_last_set"] = set_index is not None and set_index >= last_set_index
+    return task
+
+
 def serialize_session(session: PersonalWorkoutSession) -> dict[str, Any]:
     tasks = session.task_plan or []
-    current_task = None
-    if 0 <= session.next_task_index < len(tasks):
-        current_task = tasks[session.next_task_index]
+    current_task = _task_with_set_position(tasks, session.next_task_index)
 
     return {
         "id": session.id,
