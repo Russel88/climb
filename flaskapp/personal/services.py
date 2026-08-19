@@ -379,6 +379,21 @@ def _highest_load_requirement(week_plan: PersonalExerciseWeekPlan) -> tuple[set[
     return high_load_set_indexes, minimum_reps
 
 
+def _set_logs_for_cycle_week(
+    exercise: PersonalExercise,
+    cycle_number: int,
+    week_no: int,
+) -> list[PersonalSetLog]:
+    logs_statement = select(PersonalSetLog).where(
+        and_(
+            PersonalSetLog.exercise_id == exercise.id,
+            PersonalSetLog.cycle_number == cycle_number,
+            PersonalSetLog.cycle_week == week_no,
+        )
+    )
+    return list(db.session.execute(logs_statement).scalars().all())
+
+
 def _exercise_on_track_for_cycle_increase(
     exercise: PersonalExercise,
     cycle_number: int,
@@ -390,21 +405,14 @@ def _exercise_on_track_for_cycle_increase(
     week_plans_by_week = {week_plan.week_no: week_plan for week_plan in exercise.week_plans}
 
     # Only completed weeks can put an exercise off track; the current week is still in progress,
-    # so in week 1 nothing has been missed yet.
+    # so a high-load set that is still missing there has not been missed yet.
     for week_no in range(1, current_cycle_week):
         week_plan = week_plans_by_week.get(week_no)
         if week_plan is None:
             return False
 
         high_load_set_indexes, minimum_reps = _highest_load_requirement(week_plan)
-        logs_statement = select(PersonalSetLog).where(
-            and_(
-                PersonalSetLog.exercise_id == exercise.id,
-                PersonalSetLog.cycle_number == cycle_number,
-                PersonalSetLog.cycle_week == week_no,
-            )
-        )
-        logs = db.session.execute(logs_statement).scalars().all()
+        logs = _set_logs_for_cycle_week(exercise, cycle_number, week_no)
 
         hit_high_load_minimum = any(
             log.set_index in high_load_set_indexes and log.actual_reps >= minimum_reps
@@ -412,6 +420,11 @@ def _exercise_on_track_for_cycle_increase(
         )
         if not hit_high_load_minimum:
             return False
+
+    if current_cycle_week == 1:
+        # In week 1 no completed week can vouch for the exercise, so it only counts as on track
+        # once it has actually been logged this week.
+        return bool(_set_logs_for_cycle_week(exercise, cycle_number, current_cycle_week))
 
     return True
 
