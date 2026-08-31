@@ -103,8 +103,6 @@ def serialize_session(session: PersonalWorkoutSession) -> dict[str, Any]:
         "mode": session.mode.value,
         "source": session.source.value,
         "template_id": session.template_id,
-        "cycle_number": session.cycle_number,
-        "cycle_week": session.cycle_week,
         "bodyweight_kg": decimal_to_float(session.bodyweight_kg),
         "started_at": iso_datetime(session.started_at),
         "completed_at": iso_datetime(session.completed_at),

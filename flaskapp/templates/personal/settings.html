@@ -2,9 +2,16 @@
 
 {% block content %}
 <section class="card">
-  <h2>Cycle</h2>
-  <div id="settingsCycleStatus" class="stack"></div>
-  <button id="resetCycle" type="button">Reset cycle to current Monday (week 1)</button>
+  <h2>Cycles</h2>
+  <div class="stack">
+    <div>Every exercise runs its own four week cycle, tracked automatically from your logs.</div>
+    <ul class="rule-list">
+      <li>An exercise moves to the next week once you complete its heaviest set for the target reps.</li>
+      <li>Miss the week, or miss the load, and it starts again at week 1 from the next Monday.</li>
+      <li>Weeks run Monday to Sunday, and exercises are never synchronised with each other.</li>
+      <li>After a full four week cycle the dashboard offers a target weight increase.</li>
+    </ul>
+  </div>
 </section>
 
 <section class="card">

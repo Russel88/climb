@@ -102,20 +102,6 @@ class PersonalExerciseWeekPlan(db.Model):
     exercise: Mapped[PersonalExercise] = relationship(back_populates="week_plans")
 
 
-class PersonalCycleState(db.Model):
-    __tablename__ = "personal_cycle_state"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    week1_anchor_monday: Mapped[date] = mapped_column(Date, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-
-
 class PersonalWorkoutTemplate(db.Model):
     __tablename__ = "personal_workout_template"
 
@@ -159,8 +145,8 @@ class PersonalWorkoutSession(db.Model):
     mode: Mapped[WorkoutMode] = mapped_column(_enum_column(WorkoutMode, "workoutmode"), nullable=False)
     source: Mapped[WorkoutSource] = mapped_column(_enum_column(WorkoutSource, "workoutsource"), nullable=False)
     template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("personal_workout_template.id", ondelete="SET NULL"), nullable=True)
-    cycle_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    cycle_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    cycle_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cycle_week: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     bodyweight_kg: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 3), nullable=True)
     task_plan: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
     next_task_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
@@ -253,9 +239,13 @@ class PersonalBodyweightLog(db.Model):
     session_id: Mapped[Optional[int]] = mapped_column(ForeignKey("personal_workout_session.id", ondelete="SET NULL"), nullable=True)
 
 
-class PersonalCycleReview(db.Model):
-    __tablename__ = "personal_cycle_review"
+class PersonalExerciseCycleReview(db.Model):
+    __tablename__ = "personal_exercise_cycle_review"
+    __table_args__ = (
+        UniqueConstraint("exercise_id", "cycle_number", name="uq_personal_exercise_cycle_review_exercise_cycle"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    cycle_number: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    exercise_id: Mapped[int] = mapped_column(ForeignKey("personal_exercise.id", ondelete="CASCADE"), nullable=False)
+    cycle_number: Mapped[int] = mapped_column(Integer, nullable=False)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

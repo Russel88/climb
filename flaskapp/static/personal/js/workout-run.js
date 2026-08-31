@@ -81,6 +81,9 @@ function renderSession() {
   taskForm.classList.remove("hidden");
   const task = session.current_task;
   const details = [task.exercise_name];
+  if (task.cycle_week != null) {
+    details.push(`week ${task.cycle_week}`);
+  }
   if (task.planned_weight_kg != null) {
     details.push(`${task.planned_weight_kg} kg`);
   }

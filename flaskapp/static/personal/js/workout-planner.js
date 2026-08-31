@@ -140,7 +140,11 @@ function refreshSourceMode() {
 }
 function renderPreview(data) {
   previewPanel.innerHTML = "";
-  previewPanel.appendChild(line(`Cycle ${data.cycle_number}, week ${data.cycle_week}`));
+  (data.exercise_cycles || []).filter((entry) => entry.cycle_week != null).forEach((entry) => {
+    previewPanel.appendChild(
+      line(`${entry.exercise_name}: week ${entry.cycle_week}/${entry.cycle_weeks ?? data.cycle_weeks}, cycle ${entry.cycle_number}`)
+    );
+  });
   previewPanel.appendChild(line(`Tasks: ${data.task_count}`));
   data.tasks.forEach((task, index) => {
     const details = [`${index + 1}. ${task.exercise_name}`];

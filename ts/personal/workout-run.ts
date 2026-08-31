@@ -5,6 +5,7 @@ interface WorkoutTask {
   exercise_name: string;
   planned_weight_kg: number | null;
   planned_reps: number | null;
+  cycle_week?: number | null;
   is_last_set?: boolean;
 }
 
@@ -60,6 +61,9 @@ function renderSession(): void {
 
   const task = session.current_task;
   const details = [task.exercise_name];
+  if (task.cycle_week != null) {
+    details.push(`week ${task.cycle_week}`);
+  }
   if (task.planned_weight_kg != null) {
     details.push(`${task.planned_weight_kg} kg`);
   }

@@ -56,18 +56,9 @@ function mustElement(id) {
   }
   return element;
 }
-var settingsCycleStatus = mustElement("settingsCycleStatus");
-var resetCycleButton = mustElement("resetCycle");
 var bodyweightForm = mustElement("bodyweightForm");
 var manualBodyweight = mustElement("manualBodyweight");
 var bodyweightStatus = mustElement("bodyweightStatus");
-async function loadCycle() {
-  const state = await apiGet("/personal/api/cycle/state");
-  settingsCycleStatus.innerHTML = "";
-  settingsCycleStatus.appendChild(line(`Cycle: ${state.cycle_number}`));
-  settingsCycleStatus.appendChild(line(`Week: ${state.cycle_week}`));
-  settingsCycleStatus.appendChild(line(`Anchor Monday: ${state.anchor_monday}`));
-}
 async function loadBodyweight() {
   const payload = await apiGet("/personal/api/bodyweight/latest");
   if (payload.bodyweight_kg != null) {
@@ -76,22 +67,6 @@ async function loadBodyweight() {
     setToast(bodyweightStatus, `Latest: ${payload.bodyweight_kg} kg${loggedDate ? ` (${loggedDate})` : ""}`);
   }
 }
-function line(text) {
-  const element = document.createElement("div");
-  element.textContent = text;
-  return element;
-}
-resetCycleButton.addEventListener("click", async () => {
-  if (!window.confirm("Reset cycle to this week Monday and start week 1?")) {
-    return;
-  }
-  try {
-    await apiPost("/personal/api/cycle/reset", {});
-    await loadCycle();
-  } catch (error) {
-    setToast(settingsCycleStatus, errorMessage(error), true);
-  }
-});
 bodyweightForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
@@ -102,5 +77,4 @@ bodyweightForm.addEventListener("submit", async (event) => {
     setToast(bodyweightStatus, errorMessage(error), true);
   }
 });
-loadCycle().catch((error) => setToast(settingsCycleStatus, errorMessage(error), true));
 loadBodyweight().catch((error) => setToast(bodyweightStatus, errorMessage(error), true));

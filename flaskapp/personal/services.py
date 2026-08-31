@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_FLOOR
 from typing import Any
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 
 from flaskapp.extensions import db
 from flaskapp.personal.models import (
@@ -14,25 +14,40 @@ from flaskapp.personal.models import (
     ExerciseKind,
     LoadKind,
     PersonalBodyweightLog,
-    PersonalCycleReview,
-    PersonalCycleState,
     PersonalDailyNote,
     PersonalExercise,
+    PersonalExerciseCycleReview,
     PersonalExerciseWeekPlan,
     PersonalNonProgressiveLog,
     PersonalSetLog,
-    PersonalWorkoutSession,
     PersonalWorkoutSessionItem,
     WorkoutMode,
 )
 
 
+CYCLE_WEEKS = 4
+
+# Weeks of history the per-exercise cycle derivation replays when it rebuilds state from the logs.
+CYCLE_LOOKBACK_WEEKS = 26
+
+
 @dataclass
-class CycleSnapshot:
-    anchor_monday: date
-    current_monday: date
-    cycle_number: int
-    cycle_week: int
+class ExerciseCycleState:
+    """Where a single exercise stands in its own four week cycle right now.
+
+    Nothing about the cycle is stored: the state is replayed from the set logs, which
+    already stamp every set with the week and cycle it was performed under.
+    """
+
+    exercise_id: int
+    week_no: int | None
+    cycle_number: int | None
+    logged_this_week: bool
+    week_requirement_met: bool
+    previous_week_no: int | None
+    previous_week_success: bool
+    is_restart: bool
+    completed_cycle_number: int | None
 
 
 def monday_of(day: date) -> date:
@@ -43,42 +58,8 @@ def today_local() -> date:
     return date.today()
 
 
-def ensure_cycle_state(day: date | None = None) -> PersonalCycleState:
-    local_day = day or today_local()
-    state = db.session.get(PersonalCycleState, 1)
-    if state is None:
-        state = PersonalCycleState(id=1, week1_anchor_monday=monday_of(local_day))
-        db.session.add(state)
-        db.session.flush()
-    return state
-
-
-def cycle_snapshot(day: date | None = None) -> CycleSnapshot:
-    local_day = day or today_local()
-    state = ensure_cycle_state(local_day)
-    current_monday = monday_of(local_day)
-
-    delta_days = (current_monday - state.week1_anchor_monday).days
-    weeks_since_anchor = max(0, delta_days // 7)
-
-    cycle_number = (weeks_since_anchor // 4) + 1
-    cycle_week = (weeks_since_anchor % 4) + 1
-
-    return CycleSnapshot(
-        anchor_monday=state.week1_anchor_monday,
-        current_monday=current_monday,
-        cycle_number=cycle_number,
-        cycle_week=cycle_week,
-    )
-
-
-def reset_cycle_to_current_monday(day: date | None = None) -> CycleSnapshot:
-    local_day = day or today_local()
-    state = ensure_cycle_state(local_day)
-    state.week1_anchor_monday = monday_of(local_day)
-    db.session.add(state)
-    db.session.flush()
-    return cycle_snapshot(local_day)
+def next_week_no(week_no: int) -> int:
+    return (week_no % CYCLE_WEEKS) + 1
 
 
 def round_down_to_step(value: Decimal, step: Decimal) -> Decimal:
@@ -129,7 +110,7 @@ def _week_plan_for_exercise(exercise: PersonalExercise, week_no: int) -> Persona
 def _task_payload(
     session_item: PersonalWorkoutSessionItem,
     set_index: int,
-    week_no: int,
+    cycle: ExerciseCycleState | None,
     bodyweight_kg: Decimal | None,
 ) -> dict[str, Any]:
     exercise = session_item.exercise
@@ -148,8 +129,14 @@ def _task_payload(
             "planned_reps": None,
             "planned_weight_kg": None,
             "target_percent": None,
+            "cycle_week": None,
+            "cycle_number": None,
         }
 
+    if cycle is None or cycle.week_no is None:
+        raise ValueError(f"missing cycle state for exercise {exercise.id}")
+
+    week_no = cycle.week_no
     week_plan = _week_plan_for_exercise(exercise, week_no)
     if set_index < 1:
         raise ValueError("set_index must be >= 1")
@@ -173,26 +160,42 @@ def _task_payload(
         "planned_reps": target_reps,
         "planned_weight_kg": float(planned_weight),
         "target_percent": float(target_percent),
+        "cycle_week": week_no,
+        "cycle_number": cycle.cycle_number,
     }
 
 
 def build_task_plan(
     session_items: list[PersonalWorkoutSessionItem],
     mode: WorkoutMode,
-    cycle_week: int,
+    cycles: dict[int, ExerciseCycleState],
     bodyweight_kg: Decimal | None,
 ) -> list[dict[str, Any]]:
+    """Build the ordered task list for a workout.
+
+    ``cycles`` maps exercise id to that exercise's own cycle state, so two exercises in
+    the same workout can sit in different weeks of their four week plans.
+    """
+
+    def cycle_for(session_item: PersonalWorkoutSessionItem) -> ExerciseCycleState | None:
+        return cycles.get(session_item.exercise.id)
+
+    def sets_for(session_item: PersonalWorkoutSessionItem) -> int:
+        cycle = cycle_for(session_item)
+        if cycle is None or cycle.week_no is None:
+            raise ValueError(f"missing cycle state for exercise {session_item.exercise.id}")
+        return _week_plan_for_exercise(session_item.exercise, cycle.week_no).sets
+
     if mode == WorkoutMode.SEQUENTIAL:
         tasks: list[dict[str, Any]] = []
         for session_item in session_items:
             exercise = session_item.exercise
             if exercise.kind == ExerciseKind.NON_PROGRESSIVE:
-                tasks.append(_task_payload(session_item, 1, cycle_week, bodyweight_kg))
+                tasks.append(_task_payload(session_item, 1, None, bodyweight_kg))
                 continue
 
-            week_plan = _week_plan_for_exercise(exercise, cycle_week)
-            for set_index in range(1, week_plan.sets + 1):
-                tasks.append(_task_payload(session_item, set_index, cycle_week, bodyweight_kg))
+            for set_index in range(1, sets_for(session_item) + 1):
+                tasks.append(_task_payload(session_item, set_index, cycle_for(session_item), bodyweight_kg))
         return tasks
 
     if mode != WorkoutMode.INTERLEAVED:
@@ -201,12 +204,10 @@ def build_task_plan(
     progressive_set_counts: list[int] = []
     has_non_progressive = False
     for session_item in session_items:
-        exercise = session_item.exercise
-        if exercise.kind == ExerciseKind.NON_PROGRESSIVE:
+        if session_item.exercise.kind == ExerciseKind.NON_PROGRESSIVE:
             has_non_progressive = True
         else:
-            week_plan = _week_plan_for_exercise(exercise, cycle_week)
-            progressive_set_counts.append(week_plan.sets)
+            progressive_set_counts.append(sets_for(session_item))
 
     non_progressive_target_sets = 1
     if has_non_progressive and progressive_set_counts:
@@ -215,12 +216,10 @@ def build_task_plan(
     remaining_sets: dict[int, int] = {}
     next_set_index: dict[int, int] = {}
     for session_item in session_items:
-        exercise = session_item.exercise
-        if exercise.kind == ExerciseKind.NON_PROGRESSIVE:
+        if session_item.exercise.kind == ExerciseKind.NON_PROGRESSIVE:
             remaining_sets[session_item.id] = non_progressive_target_sets
         else:
-            week_plan = _week_plan_for_exercise(exercise, cycle_week)
-            remaining_sets[session_item.id] = week_plan.sets
+            remaining_sets[session_item.id] = sets_for(session_item)
         next_set_index[session_item.id] = 1
 
     tasks = []
@@ -229,7 +228,15 @@ def build_task_plan(
             if remaining_sets[session_item.id] <= 0:
                 continue
             set_index = next_set_index[session_item.id]
-            tasks.append(_task_payload(session_item, set_index, cycle_week, bodyweight_kg))
+            is_non_progressive = session_item.exercise.kind == ExerciseKind.NON_PROGRESSIVE
+            tasks.append(
+                _task_payload(
+                    session_item,
+                    set_index,
+                    None if is_non_progressive else cycle_for(session_item),
+                    bodyweight_kg,
+                )
+            )
             remaining_sets[session_item.id] -= 1
             next_set_index[session_item.id] += 1
 
@@ -246,112 +253,6 @@ def record_bodyweight(bodyweight_kg: Decimal, source: BodyweightSource, session_
     db.session.add(entry)
     db.session.flush()
     return entry
-
-
-def is_cycle_reviewed(cycle_number: int) -> bool:
-    statement = select(PersonalCycleReview).where(PersonalCycleReview.cycle_number == cycle_number)
-    return db.session.execute(statement).scalars().first() is not None
-
-
-def mark_cycle_reviewed(cycle_number: int) -> PersonalCycleReview:
-    statement = select(PersonalCycleReview).where(PersonalCycleReview.cycle_number == cycle_number)
-    current = db.session.execute(statement).scalars().first()
-    if current is not None:
-        return current
-
-    review = PersonalCycleReview(cycle_number=cycle_number)
-    db.session.add(review)
-    db.session.flush()
-    return review
-
-
-def evaluate_cycle_suggestions(cycle_number: int) -> list[dict[str, Any]]:
-    previous_cycle = cycle_number - 1
-    if previous_cycle < 1:
-        return []
-
-    statement = select(PersonalExercise).where(
-        and_(
-            PersonalExercise.kind == ExerciseKind.PROGRESSIVE,
-            PersonalExercise.is_active.is_(True),
-        )
-    )
-    exercises = db.session.execute(statement).scalars().all()
-
-    suggestions: list[dict[str, Any]] = []
-    for exercise in exercises:
-        if exercise.increment_step_kg is None or exercise.target_added_weight_kg is None:
-            continue
-
-        week_plan_map = {plan.week_no: plan for plan in exercise.week_plans}
-        if set(week_plan_map.keys()) != {1, 2, 3, 4}:
-            continue
-
-        qualifies = True
-        for week_no in (1, 2, 3, 4):
-            week_plan = week_plan_map[week_no]
-            logs_statement = select(PersonalSetLog).where(
-                and_(
-                    PersonalSetLog.exercise_id == exercise.id,
-                    PersonalSetLog.cycle_number == previous_cycle,
-                    PersonalSetLog.cycle_week == week_no,
-                )
-            )
-            logs = db.session.execute(logs_statement).scalars().all()
-
-            if len(logs) < week_plan.sets:
-                qualifies = False
-                break
-
-            if any(log.actual_reps < log.planned_reps for log in logs):
-                qualifies = False
-                break
-
-        if not qualifies:
-            continue
-
-        suggestions.append(
-            {
-                "exercise_id": exercise.id,
-                "exercise_name": exercise.name,
-                "current_target_added_weight_kg": float(exercise.target_added_weight_kg),
-                "increment_step_kg": float(exercise.increment_step_kg),
-                "suggested_target_added_weight_kg": float(exercise.target_added_weight_kg + exercise.increment_step_kg),
-            }
-        )
-
-    suggestions.sort(key=lambda item: item["exercise_name"].lower())
-    return suggestions
-
-
-def apply_cycle_suggestions(cycle_number: int, accepted_exercise_ids: set[int]) -> list[dict[str, Any]]:
-    suggestions = evaluate_cycle_suggestions(cycle_number)
-    applied: list[dict[str, Any]] = []
-    accepted_by_id = {item["exercise_id"]: item for item in suggestions if item["exercise_id"] in accepted_exercise_ids}
-
-    if not accepted_by_id:
-        mark_cycle_reviewed(cycle_number)
-        return []
-
-    statement = select(PersonalExercise).where(PersonalExercise.id.in_(accepted_by_id.keys()))
-    exercises = db.session.execute(statement).scalars().all()
-
-    for exercise in exercises:
-        if exercise.target_added_weight_kg is None or exercise.increment_step_kg is None:
-            continue
-        old_target = exercise.target_added_weight_kg
-        exercise.target_added_weight_kg = old_target + exercise.increment_step_kg
-        applied.append(
-            {
-                "exercise_id": exercise.id,
-                "exercise_name": exercise.name,
-                "old_target_added_weight_kg": float(old_target),
-                "new_target_added_weight_kg": float(exercise.target_added_weight_kg),
-            }
-        )
-
-    mark_cycle_reviewed(cycle_number)
-    return applied
 
 
 def _values_for_set_count(values: list[Any] | None, set_count: int, fallback: Any) -> list[Any]:
@@ -379,71 +280,308 @@ def _highest_load_requirement(week_plan: PersonalExerciseWeekPlan) -> tuple[set[
     return high_load_set_indexes, minimum_reps
 
 
-def _set_logs_for_cycle_week(
+def _week_bounds(monday: date) -> tuple[datetime, datetime]:
+    start_at = datetime.combine(monday, datetime.min.time(), tzinfo=timezone.utc)
+    end_at = datetime.combine(monday + timedelta(days=6), datetime.max.time(), tzinfo=timezone.utc)
+    return start_at, end_at
+
+
+@dataclass
+class _WeekOutcome:
+    week_no: int
+    cycle_number: int
+    success: bool
+
+
+def _week_outcome(exercise: PersonalExercise, logs: list[PersonalSetLog]) -> _WeekOutcome | None:
+    """Read back what an exercise did in one calendar week.
+
+    Every set log stamps the week and cycle it was performed under, so the week an
+    exercise was actually in is taken from the logs rather than recomputed. The week
+    counts as completed when the heaviest set of that week was hit for its target reps.
+    """
+
+    if not logs:
+        return None
+
+    latest = max(logs, key=lambda log: log.performed_at)
+    week_no = latest.cycle_week
+    cycle_number = latest.cycle_number
+
+    week_plan = next((plan for plan in exercise.week_plans if plan.week_no == week_no), None)
+    if week_plan is None:
+        return _WeekOutcome(week_no=week_no, cycle_number=cycle_number, success=False)
+
+    high_load_set_indexes, minimum_reps = _highest_load_requirement(week_plan)
+    success = any(
+        log.cycle_week == week_no
+        and log.set_index in high_load_set_indexes
+        and log.actual_reps >= minimum_reps
+        for log in logs
+    )
+
+    return _WeekOutcome(week_no=week_no, cycle_number=cycle_number, success=success)
+
+
+def _bucket_set_logs_by_week(
+    current_monday: date,
+    exercise_ids: list[int],
+) -> dict[int, dict[date, list[PersonalSetLog]]]:
+    earliest_monday = current_monday - timedelta(weeks=CYCLE_LOOKBACK_WEEKS)
+    start_at, _ = _week_bounds(earliest_monday)
+    _, end_at = _week_bounds(current_monday)
+
+    statement = (
+        select(PersonalSetLog)
+        .where(
+            and_(
+                PersonalSetLog.exercise_id.in_(exercise_ids),
+                PersonalSetLog.performed_at >= start_at,
+                PersonalSetLog.performed_at <= end_at,
+            )
+        )
+        .order_by(PersonalSetLog.performed_at.asc())
+    )
+
+    buckets: dict[int, dict[date, list[PersonalSetLog]]] = defaultdict(lambda: defaultdict(list))
+    for log in db.session.execute(statement).scalars().all():
+        buckets[log.exercise_id][monday_of(log.performed_at.date())].append(log)
+    return buckets
+
+
+def _last_cycle_numbers(exercise_ids: list[int]) -> dict[int, int]:
+    statement = (
+        select(PersonalSetLog.exercise_id, func.max(PersonalSetLog.cycle_number))
+        .where(PersonalSetLog.exercise_id.in_(exercise_ids))
+        .group_by(PersonalSetLog.exercise_id)
+    )
+    return {
+        exercise_id: cycle_number
+        for exercise_id, cycle_number in db.session.execute(statement).all()
+        if exercise_id is not None and cycle_number is not None
+    }
+
+
+def _latest_completed_cycle_number(
     exercise: PersonalExercise,
-    cycle_number: int,
-    week_no: int,
-) -> list[PersonalSetLog]:
-    logs_statement = select(PersonalSetLog).where(
+    weeks: dict[date, list[PersonalSetLog]],
+    current_monday: date,
+) -> int | None:
+    """The cycle number of the most recent finished cycle, ignoring the running week."""
+
+    monday = current_monday - timedelta(weeks=1)
+    earliest_monday = current_monday - timedelta(weeks=CYCLE_LOOKBACK_WEEKS)
+
+    while monday >= earliest_monday:
+        outcome = _week_outcome(exercise, weeks.get(monday, []))
+        if outcome is not None and outcome.success and outcome.week_no == CYCLE_WEEKS:
+            return outcome.cycle_number
+        monday -= timedelta(weeks=1)
+
+    return None
+
+
+def _derive_cycle_state(
+    exercise: PersonalExercise,
+    weeks: dict[date, list[PersonalSetLog]],
+    current_monday: date,
+    last_cycle_number: int | None,
+) -> ExerciseCycleState:
+    this_week = _week_outcome(exercise, weeks.get(current_monday, []))
+    previous_week = _week_outcome(exercise, weeks.get(current_monday - timedelta(weeks=1), []))
+    completed_cycle_number = _latest_completed_cycle_number(exercise, weeks, current_monday)
+
+    def in_range(week_no: int | None) -> bool:
+        return week_no is not None and 1 <= week_no <= CYCLE_WEEKS
+
+    # Already trained this week: the exercise stays in the week it was logged under, so a
+    # second workout in the same week repeats that week rather than skipping ahead.
+    if this_week is not None and in_range(this_week.week_no):
+        return ExerciseCycleState(
+            exercise_id=exercise.id,
+            week_no=this_week.week_no,
+            cycle_number=this_week.cycle_number,
+            logged_this_week=True,
+            week_requirement_met=this_week.success,
+            previous_week_no=previous_week.week_no if previous_week else None,
+            previous_week_success=bool(previous_week and previous_week.success),
+            is_restart=this_week.week_no == 1,
+            completed_cycle_number=completed_cycle_number,
+        )
+
+    # Last week was completed at the prescribed load, so the exercise moves on one week,
+    # rolling into the next cycle after week 4.
+    if previous_week is not None and previous_week.success and in_range(previous_week.week_no):
+        wrapped = previous_week.week_no == CYCLE_WEEKS
+        return ExerciseCycleState(
+            exercise_id=exercise.id,
+            week_no=next_week_no(previous_week.week_no),
+            cycle_number=previous_week.cycle_number + (1 if wrapped else 0),
+            logged_this_week=False,
+            week_requirement_met=False,
+            previous_week_no=previous_week.week_no,
+            previous_week_success=True,
+            is_restart=wrapped,
+            completed_cycle_number=completed_cycle_number,
+        )
+
+    # Missed last week, or missed the load, so the exercise starts over at week 1.
+    return ExerciseCycleState(
+        exercise_id=exercise.id,
+        week_no=1,
+        cycle_number=(last_cycle_number + 1) if last_cycle_number is not None else 1,
+        logged_this_week=False,
+        week_requirement_met=False,
+        previous_week_no=previous_week.week_no if previous_week else None,
+        previous_week_success=False,
+        is_restart=last_cycle_number is not None,
+        completed_cycle_number=completed_cycle_number,
+    )
+
+
+def exercise_cycle_states(
+    exercises: list[PersonalExercise],
+    reference_day: date | None = None,
+) -> dict[int, ExerciseCycleState]:
+    """Current cycle position of every progressive exercise, keyed by exercise id.
+
+    Non-progressive exercises have no week plan and are left out.
+    """
+
+    current_monday = monday_of(reference_day or today_local())
+    progressive = [exercise for exercise in exercises if exercise.kind == ExerciseKind.PROGRESSIVE]
+    if not progressive:
+        return {}
+
+    exercise_ids = [exercise.id for exercise in progressive]
+    buckets = _bucket_set_logs_by_week(current_monday, exercise_ids)
+    last_cycle_numbers = _last_cycle_numbers(exercise_ids)
+
+    return {
+        exercise.id: _derive_cycle_state(
+            exercise,
+            buckets.get(exercise.id, {}),
+            current_monday,
+            last_cycle_numbers.get(exercise.id),
+        )
+        for exercise in progressive
+    }
+
+
+def exercise_cycle_state(
+    exercise: PersonalExercise,
+    reference_day: date | None = None,
+) -> ExerciseCycleState | None:
+    return exercise_cycle_states([exercise], reference_day).get(exercise.id)
+
+
+def is_exercise_cycle_reviewed(exercise_id: int, cycle_number: int) -> bool:
+    statement = select(PersonalExerciseCycleReview).where(
         and_(
-            PersonalSetLog.exercise_id == exercise.id,
-            PersonalSetLog.cycle_number == cycle_number,
-            PersonalSetLog.cycle_week == week_no,
+            PersonalExerciseCycleReview.exercise_id == exercise_id,
+            PersonalExerciseCycleReview.cycle_number == cycle_number,
         )
     )
-    return list(db.session.execute(logs_statement).scalars().all())
+    return db.session.execute(statement).scalars().first() is not None
 
 
-def _exercise_on_track_for_cycle_increase(
-    exercise: PersonalExercise,
-    cycle_number: int,
-    current_cycle_week: int,
-    logged_this_week: bool,
-) -> bool:
-    if exercise.kind != ExerciseKind.PROGRESSIVE:
-        return False
-
-    week_plans_by_week = {week_plan.week_no: week_plan for week_plan in exercise.week_plans}
-
-    # Only completed weeks can put an exercise off track; the current week is still in progress,
-    # so a high-load set that is still missing there has not been missed yet.
-    for week_no in range(1, current_cycle_week):
-        week_plan = week_plans_by_week.get(week_no)
-        if week_plan is None:
-            return False
-
-        high_load_set_indexes, minimum_reps = _highest_load_requirement(week_plan)
-        logs = _set_logs_for_cycle_week(exercise, cycle_number, week_no)
-
-        hit_high_load_minimum = any(
-            log.set_index in high_load_set_indexes and log.actual_reps >= minimum_reps
-            for log in logs
+def mark_exercise_cycle_reviewed(exercise_id: int, cycle_number: int) -> PersonalExerciseCycleReview:
+    statement = select(PersonalExerciseCycleReview).where(
+        and_(
+            PersonalExerciseCycleReview.exercise_id == exercise_id,
+            PersonalExerciseCycleReview.cycle_number == cycle_number,
         )
-        if not hit_high_load_minimum:
-            return False
+    )
+    current = db.session.execute(statement).scalars().first()
+    if current is not None:
+        return current
 
-    if current_cycle_week == 1:
-        # In week 1 no completed week can vouch for the exercise, so it only counts as on track
-        # once it has actually been logged this week.
-        return logged_this_week
-
-    return True
+    review = PersonalExerciseCycleReview(exercise_id=exercise_id, cycle_number=cycle_number)
+    db.session.add(review)
+    db.session.flush()
+    return review
 
 
-def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, Any]:
-    current_day = reference_day or today_local()
-    snapshot = cycle_snapshot(current_day)
-    week_start = monday_of(current_day)
-    week_end = week_start + timedelta(days=6)
-    start_at = datetime.combine(week_start, datetime.min.time(), tzinfo=timezone.utc)
-    end_at = datetime.combine(week_end, datetime.max.time(), tzinfo=timezone.utc)
-
-    exercises_statement = (
+def active_exercises() -> list[PersonalExercise]:
+    statement = (
         select(PersonalExercise)
         .where(PersonalExercise.is_active.is_(True))
         .order_by(PersonalExercise.name.asc())
     )
-    exercises = db.session.execute(exercises_statement).scalars().all()
+    return list(db.session.execute(statement).scalars().all())
+
+
+def evaluate_increase_suggestions(reference_day: date | None = None) -> list[dict[str, Any]]:
+    """Exercises that finished a full four week cycle and have not been reviewed yet."""
+
+    exercises = active_exercises()
+    cycles = exercise_cycle_states(exercises, reference_day)
+
+    suggestions: list[dict[str, Any]] = []
+    for exercise in exercises:
+        cycle = cycles.get(exercise.id)
+        if cycle is None or cycle.completed_cycle_number is None:
+            continue
+        if exercise.increment_step_kg is None or exercise.target_added_weight_kg is None:
+            continue
+        if is_exercise_cycle_reviewed(exercise.id, cycle.completed_cycle_number):
+            continue
+
+        suggestions.append(
+            {
+                "exercise_id": exercise.id,
+                "exercise_name": exercise.name,
+                "completed_cycle_number": cycle.completed_cycle_number,
+                "cycle_week": cycle.week_no,
+                "current_target_added_weight_kg": float(exercise.target_added_weight_kg),
+                "increment_step_kg": float(exercise.increment_step_kg),
+                "suggested_target_added_weight_kg": float(exercise.target_added_weight_kg + exercise.increment_step_kg),
+            }
+        )
+
+    suggestions.sort(key=lambda item: item["exercise_name"].lower())
+    return suggestions
+
+
+def apply_increase_suggestions(
+    accepted_exercise_ids: set[int],
+    reference_day: date | None = None,
+) -> list[dict[str, Any]]:
+    """Raise the targets that were accepted and mark every open suggestion as reviewed."""
+
+    applied: list[dict[str, Any]] = []
+
+    for suggestion in evaluate_increase_suggestions(reference_day):
+        exercise = db.session.get(PersonalExercise, suggestion["exercise_id"])
+        if exercise is None:
+            continue
+
+        if exercise.id in accepted_exercise_ids and exercise.target_added_weight_kg is not None and exercise.increment_step_kg is not None:
+            old_target = exercise.target_added_weight_kg
+            exercise.target_added_weight_kg = old_target + exercise.increment_step_kg
+            applied.append(
+                {
+                    "exercise_id": exercise.id,
+                    "exercise_name": exercise.name,
+                    "cycle_number": suggestion["completed_cycle_number"],
+                    "old_target_added_weight_kg": float(old_target),
+                    "new_target_added_weight_kg": float(exercise.target_added_weight_kg),
+                }
+            )
+
+        mark_exercise_cycle_reviewed(exercise.id, suggestion["completed_cycle_number"])
+
+    return applied
+
+
+def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, Any]:
+    current_day = reference_day or today_local()
+    week_start = monday_of(current_day)
+    week_end = week_start + timedelta(days=6)
+    start_at, end_at = _week_bounds(week_start)
+
+    exercises = active_exercises()
+    cycles = exercise_cycle_states(exercises, current_day)
 
     set_logs_statement = select(PersonalSetLog.exercise_id).where(
         and_(
@@ -472,23 +610,41 @@ def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, A
     )
 
     def serialize_status_exercise(exercise: PersonalExercise) -> dict[str, Any]:
+        cycle = cycles.get(exercise.id)
+
+        if cycle is None:
+            return {
+                "id": exercise.id,
+                "name": exercise.name,
+                "kind": exercise.kind.value,
+                "cycle_week": None,
+                "cycle_number": None,
+                "cycle_weeks": None,
+                "next_week_no": None,
+                "is_restart": False,
+                "week_requirement_met": False,
+                "on_track_for_cycle_increase": False,
+            }
+
         return {
             "id": exercise.id,
             "name": exercise.name,
             "kind": exercise.kind.value,
-            "on_track_for_cycle_increase": _exercise_on_track_for_cycle_increase(
-                exercise,
-                snapshot.cycle_number,
-                snapshot.cycle_week,
-                exercise.id in logged_ids,
-            ),
+            "cycle_week": cycle.week_no,
+            "cycle_number": cycle.cycle_number,
+            "cycle_weeks": CYCLE_WEEKS,
+            "next_week_no": next_week_no(cycle.week_no) if cycle.week_requirement_met else 1,
+            "is_restart": cycle.is_restart,
+            "week_requirement_met": cycle.week_requirement_met,
+            # Being in week N already means weeks 1..N-1 were completed back to back, so
+            # clearing this week is all that keeps the exercise on track.
+            "on_track_for_cycle_increase": cycle.week_requirement_met,
         }
 
     return {
         "week_start": week_start.isoformat(),
         "week_end": week_end.isoformat(),
-        "cycle_number": snapshot.cycle_number,
-        "cycle_week": snapshot.cycle_week,
+        "cycle_weeks": CYCLE_WEEKS,
         "logged": [serialize_status_exercise(exercise) for exercise in exercises if exercise.id in logged_ids],
         "not_logged": [serialize_status_exercise(exercise) for exercise in exercises if exercise.id not in logged_ids],
     }

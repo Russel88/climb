@@ -31,8 +31,6 @@ class SerializeSessionTestCase(unittest.TestCase):
             session_date=date(2026, 6, 10),
             mode=WorkoutMode.INTERLEAVED,
             source=WorkoutSource.AD_HOC,
-            cycle_number=1,
-            cycle_week=1,
             task_plan=tasks,
             next_task_index=next_task_index,
         )

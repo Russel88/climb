@@ -27,6 +27,8 @@ export interface WorkoutTaskDto {
   set_index: number;
   planned_reps: number | null;
   planned_weight_kg: number | null;
+  cycle_week: number | null;
+  cycle_number: number | null;
 }
 
 export interface WorkoutSessionDto {
@@ -34,25 +36,49 @@ export interface WorkoutSessionDto {
   session_date: string;
   mode: 'sequential' | 'interleaved';
   source: 'template' | 'ad_hoc';
-  cycle_number: number;
-  cycle_week: number;
   bodyweight_kg: number | null;
   next_task_index: number;
   task_count: number;
   current_task: WorkoutTaskDto | null;
 }
 
-export interface CycleStateDto {
-  anchor_monday: string;
-  current_monday: string;
-  cycle_number: number;
-  cycle_week: number;
-  should_prompt_suggestions: boolean;
+export interface ExerciseCycleDto {
+  exercise_id: number;
+  exercise_name: string;
+  kind: 'progressive' | 'non_progressive';
+  cycle_week: number | null;
+  cycle_number: number | null;
+  cycle_weeks: number | null;
+  logged_this_week: boolean;
+  is_restart: boolean;
+}
+
+export interface WeeklyExerciseDto {
+  id: number;
+  name: string;
+  kind: 'progressive' | 'non_progressive';
+  cycle_week: number | null;
+  cycle_number: number | null;
+  cycle_weeks: number | null;
+  next_week_no: number | null;
+  is_restart: boolean;
+  week_requirement_met: boolean;
+  on_track_for_cycle_increase: boolean;
+}
+
+export interface WeeklyExerciseStatusDto {
+  week_start: string;
+  week_end: string;
+  cycle_weeks: number;
+  logged: WeeklyExerciseDto[];
+  not_logged: WeeklyExerciseDto[];
 }
 
 export interface CycleSuggestionDto {
   exercise_id: number;
   exercise_name: string;
+  completed_cycle_number: number;
+  cycle_week: number | null;
   current_target_added_weight_kg: number;
   increment_step_kg: number;
   suggested_target_added_weight_kg: number;

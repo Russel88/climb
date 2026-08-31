@@ -315,6 +315,45 @@ button:disabled {
   box-shadow: 0 0 0 3px rgba(142, 162, 195, 0.14);
 }
 
+.exercise-cycle-meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  text-align: right;
+}
+
+.week-badge {
+  display: inline-block;
+  padding: 0.16rem 0.5rem;
+  border: 1px solid rgba(159, 177, 208, 0.32);
+  border-radius: 999px;
+  background: rgba(93, 143, 224, 0.16);
+  color: #d6e4ff;
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.week-badge.is-muted {
+  background: rgba(142, 162, 195, 0.12);
+  color: #8ea2c3;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.rule-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: #8ea2c3;
+  line-height: 1.5;
+}
+
+.rule-list li + li {
+  margin-top: 0.35rem;
+}
+
 .selector-row {
   display: grid;
   grid-template-columns: 1.25rem minmax(0, 1fr) 5rem;

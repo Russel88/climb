@@ -1,35 +1,8 @@
 import { apiGet, apiPost, errorMessage, setToast } from './api-client';
-
-interface CycleState {
-  cycle_number: number;
-  cycle_week: number;
-  anchor_monday: string;
-  should_prompt_suggestions: boolean;
-}
-
-interface CycleSuggestion {
-  exercise_id: number;
-  exercise_name: string;
-  current_target_added_weight_kg: number;
-  suggested_target_added_weight_kg: number;
-}
+import type { CycleSuggestionDto, WeeklyExerciseDto, WeeklyExerciseStatusDto } from './types';
 
 interface SuggestionsResponse {
-  suggestions: CycleSuggestion[];
-}
-
-interface WeeklyExercise {
-  id: number;
-  name: string;
-  kind: string;
-  on_track_for_cycle_increase: boolean;
-}
-
-interface WeeklyExerciseStatus {
-  week_start: string;
-  week_end: string;
-  logged: WeeklyExercise[];
-  not_logged: WeeklyExercise[];
+  suggestions: CycleSuggestionDto[];
 }
 
 function mustElement<T extends HTMLElement>(id: string): T {
@@ -40,44 +13,57 @@ function mustElement<T extends HTMLElement>(id: string): T {
   return element as T;
 }
 
-const cycleStatus = mustElement<HTMLDivElement>('cycleStatus');
 const suggestions = mustElement<HTMLDivElement>('suggestions');
 const weeklyExerciseStatus = mustElement<HTMLDivElement>('weeklyExerciseStatus');
 
 async function loadDashboard(): Promise<void> {
   try {
-    const [state, weeklyStatus] = await Promise.all([
-      apiGet<CycleState>('/personal/api/cycle/state'),
-      apiGet<WeeklyExerciseStatus>('/personal/api/dashboard/week-exercises'),
+    const [weeklyStatus, suggestionPayload] = await Promise.all([
+      apiGet<WeeklyExerciseStatusDto>('/personal/api/dashboard/week-exercises'),
+      apiGet<SuggestionsResponse>('/personal/api/cycle/suggestions'),
     ]);
 
-    cycleStatus.innerHTML = '';
-    cycleStatus.appendChild(line(`Cycle number: ${state.cycle_number}`));
-    cycleStatus.appendChild(line(`Cycle week: ${state.cycle_week}`));
-    cycleStatus.appendChild(line(`Week 1 anchor Monday: ${state.anchor_monday}`));
     renderWeeklyExerciseStatus(weeklyStatus);
-
-    if (!state.should_prompt_suggestions) {
-      suggestions.innerHTML = '';
-      suggestions.appendChild(line('No pending cycle increase suggestions.'));
-      return;
-    }
-
-    const suggestionPayload = await apiGet<SuggestionsResponse>('/personal/api/cycle/suggestions');
     renderSuggestions(suggestionPayload.suggestions || []);
   } catch (error) {
-    setToast(cycleStatus, errorMessage(error), true);
+    setToast(weeklyExerciseStatus, errorMessage(error), true);
   }
 }
 
-function renderWeeklyExerciseStatus(status: WeeklyExerciseStatus): void {
+function renderWeeklyExerciseStatus(status: WeeklyExerciseStatusDto): void {
   weeklyExerciseStatus.innerHTML = '';
   weeklyExerciseStatus.appendChild(line(`${status.week_start} to ${status.week_end}`));
   weeklyExerciseStatus.appendChild(exerciseGroup('Logged', status.logged));
   weeklyExerciseStatus.appendChild(exerciseGroup('Not logged', status.not_logged));
 }
 
-function exerciseGroup(title: string, exercises: WeeklyExercise[]): HTMLDivElement {
+function weekLabel(exercise: WeeklyExerciseDto): string {
+  if (exercise.cycle_week == null) {
+    return exercise.kind.replace('_', ' ');
+  }
+  return `Week ${exercise.cycle_week}/${exercise.cycle_weeks ?? 4}`;
+}
+
+function cycleLabel(exercise: WeeklyExerciseDto): string {
+  if (exercise.cycle_number == null) {
+    return '';
+  }
+  return `cycle ${exercise.cycle_number}`;
+}
+
+function statusExplanation(exercise: WeeklyExerciseDto): string {
+  if (exercise.cycle_week == null) {
+    return 'Not a progressive exercise';
+  }
+  if (exercise.week_requirement_met) {
+    return exercise.next_week_no === 1
+      ? `Week ${exercise.cycle_week} done, next cycle starts Monday`
+      : `Week ${exercise.cycle_week} done, week ${exercise.next_week_no} from Monday`;
+  }
+  return `Week ${exercise.cycle_week} still open, restarts at week 1 on Monday if not completed`;
+}
+
+function exerciseGroup(title: string, exercises: WeeklyExerciseDto[]): HTMLDivElement {
   const group = document.createElement('div');
   group.className = 'stack';
 
@@ -100,47 +86,44 @@ function exerciseGroup(title: string, exercises: WeeklyExercise[]): HTMLDivEleme
     const statusDot = document.createElement('span');
     const statusClass = exercise.kind === 'non_progressive'
       ? 'is-not-progressive'
-      : exercise.on_track_for_cycle_increase
+      : exercise.week_requirement_met
         ? 'is-on-track'
         : 'is-off-track';
     statusDot.className = `increase-status-dot ${statusClass}`;
-    statusDot.title = exercise.kind === 'non_progressive'
-      ? 'Not a progressive exercise'
-      : exercise.on_track_for_cycle_increase
-        ? 'On track for cycle increase'
-        : 'Not on track for cycle increase';
+    statusDot.title = statusExplanation(exercise);
 
     const name = document.createElement('strong');
     name.textContent = exercise.name;
 
-    const kind = document.createElement('small');
-    kind.textContent = exercise.kind.replace('_', ' ');
+    const meta = document.createElement('span');
+    meta.className = 'exercise-cycle-meta';
+
+    const badge = document.createElement('span');
+    badge.className = exercise.cycle_week == null ? 'week-badge is-muted' : 'week-badge';
+    badge.textContent = weekLabel(exercise);
+    badge.title = statusExplanation(exercise);
+    meta.appendChild(badge);
+
+    const cycle = cycleLabel(exercise);
+    if (cycle) {
+      const cycleText = document.createElement('small');
+      cycleText.textContent = cycle;
+      meta.appendChild(cycleText);
+    }
 
     summary.append(statusDot, name);
-    row.append(summary, kind);
+    row.append(summary, meta);
     group.appendChild(row);
   });
 
   return group;
 }
 
-function renderSuggestions(list: CycleSuggestion[]): void {
+function renderSuggestions(list: CycleSuggestionDto[]): void {
   suggestions.innerHTML = '';
 
   if (!list.length) {
-    suggestions.appendChild(line('No exercises qualify for increase this cycle.'));
-
-    const markButton = document.createElement('button');
-    markButton.textContent = 'Mark reviewed';
-    markButton.addEventListener('click', async () => {
-      try {
-        await apiPost('/personal/api/cycle/suggestions/apply', { accepted_exercise_ids: [] });
-        await loadDashboard();
-      } catch (error) {
-        setToast(suggestions, errorMessage(error), true);
-      }
-    });
-    suggestions.appendChild(markButton);
+    suggestions.appendChild(line('No exercise has finished a cycle awaiting review.'));
     return;
   }
 
@@ -157,7 +140,7 @@ function renderSuggestions(list: CycleSuggestion[]): void {
     checkbox.checked = true;
 
     const details = document.createElement('span');
-    details.textContent = `${suggestion.exercise_name}: ${suggestion.current_target_added_weight_kg} -> ${suggestion.suggested_target_added_weight_kg} kg`;
+    details.textContent = `${suggestion.exercise_name} (cycle ${suggestion.completed_cycle_number} done): ${suggestion.current_target_added_weight_kg} -> ${suggestion.suggested_target_added_weight_kg} kg`;
 
     wrapper.append(checkbox, details);
     form.appendChild(wrapper);

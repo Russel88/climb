@@ -62,7 +62,20 @@ Main UI pages:
 
 ## Cycle behavior
 
-- Fixed 4-week cycle
+Every exercise runs its own 4-week cycle. Exercises are never synchronised with each
+other, and there is nothing to reset by hand: the position is derived from the logs.
+
 - Monday-Sunday week boundaries
-- Cycle reset anchors week 1 to current Monday
+- An exercise moves to the next week when its heaviest set of the week is completed for
+  the target reps; week 4 rolls into week 1 of the next cycle
+- A week that is missed, or logged below the target, sends the exercise back to week 1
+  from the following Monday
 - Per-exercise week percentages (`personal_exercise_week_plan`)
+- Cycle position is not stored. It is replayed from the week and cycle already stamped on
+  every row of `personal_set_log`, so existing training data carries an in-flight cycle
+  straight over
+- Finishing a full cycle offers a target weight increase on the dashboard, tracked per
+  exercise in `personal_exercise_cycle_review`
+
+`personal_cycle_state` and `personal_cycle_review` held the old global cycle and are left
+in place but no longer read.

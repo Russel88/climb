@@ -26,18 +26,16 @@ from flaskapp.personal.models import (
 )
 from flaskapp.personal.serializers import decimal_to_float, serialize_exercise, serialize_session, serialize_template
 from flaskapp.personal.services import (
-    apply_cycle_suggestions,
+    CYCLE_WEEKS,
+    apply_increase_suggestions,
     build_task_plan,
-    cycle_snapshot,
-    evaluate_cycle_suggestions,
+    evaluate_increase_suggestions,
+    exercise_cycle_states,
     exercise_history,
     get_history_window,
-    is_cycle_reviewed,
     latest_bodyweight,
-    mark_cycle_reviewed,
     month_history,
     record_bodyweight,
-    reset_cycle_to_current_monday,
     weekly_exercise_log_status,
 )
 from flaskapp.personal.validation import ValidationError, validate_exercise_payload
@@ -107,52 +105,15 @@ def _unhandled_error(exc: Exception):
     return _error(f"Internal error: {exc}", 500)
 
 
-@personal_api_bp.route("/cycle/state", methods=["GET"])
-def get_cycle_state():
-    snapshot = cycle_snapshot()
-    db.session.commit()
-    reviewed = is_cycle_reviewed(snapshot.cycle_number)
-    should_prompt_suggestions = snapshot.cycle_week == 1 and not reviewed
-
-    return jsonify(
-        {
-            "anchor_monday": snapshot.anchor_monday.isoformat(),
-            "current_monday": snapshot.current_monday.isoformat(),
-            "cycle_number": snapshot.cycle_number,
-            "cycle_week": snapshot.cycle_week,
-            "should_prompt_suggestions": should_prompt_suggestions,
-        }
-    )
-
-
-@personal_api_bp.route("/cycle/reset", methods=["POST"])
-def reset_cycle():
-    snapshot = reset_cycle_to_current_monday()
-    db.session.commit()
-    return jsonify(
-        {
-            "anchor_monday": snapshot.anchor_monday.isoformat(),
-            "current_monday": snapshot.current_monday.isoformat(),
-            "cycle_number": snapshot.cycle_number,
-            "cycle_week": snapshot.cycle_week,
-        }
-    )
-
-
 @personal_api_bp.route("/cycle/suggestions", methods=["GET"])
 def get_cycle_suggestions():
-    snapshot = cycle_snapshot()
+    suggestions = evaluate_increase_suggestions()
     db.session.commit()
-    reviewed = is_cycle_reviewed(snapshot.cycle_number)
-    should_prompt = snapshot.cycle_week == 1 and not reviewed
-
-    suggestions = evaluate_cycle_suggestions(snapshot.cycle_number) if should_prompt else []
 
     return jsonify(
         {
-            "cycle_number": snapshot.cycle_number,
-            "cycle_week": snapshot.cycle_week,
-            "should_prompt": should_prompt,
+            "cycle_weeks": CYCLE_WEEKS,
+            "should_prompt": bool(suggestions),
             "suggestions": suggestions,
         }
     )
@@ -167,14 +128,10 @@ def apply_suggestions():
         raise ValidationError("accepted_exercise_ids must be a list")
 
     accepted_ids = {int(item) for item in accepted_ids_raw}
-    snapshot = cycle_snapshot()
-
-    applied = apply_cycle_suggestions(snapshot.cycle_number, accepted_ids)
-    if not accepted_ids:
-        mark_cycle_reviewed(snapshot.cycle_number)
+    applied = apply_increase_suggestions(accepted_ids)
 
     db.session.commit()
-    return jsonify({"applied": applied, "cycle_number": snapshot.cycle_number})
+    return jsonify({"applied": applied})
 
 
 @personal_api_bp.route("/dashboard/week-exercises", methods=["GET"])
@@ -404,6 +361,60 @@ def _resolve_session_day(payload: dict[str, Any]) -> date:
     return _parse_iso_date(str(value), "session_date")
 
 
+def _performed_at(session: PersonalWorkoutSession) -> datetime:
+    """Timestamp a log inside the day the workout is recorded for.
+
+    Cycles are derived from the week a set log falls in, so a back-dated session must
+    log into that week rather than into the week it happens to be entered.
+    """
+
+    now = datetime.now(timezone.utc)
+    if session.session_date == now.date():
+        return now
+    return datetime.combine(session.session_date, now.timetz())
+
+
+def _resolve_exercises(ordered_exercise_ids: list[int]) -> list[PersonalExercise]:
+    exercises: list[PersonalExercise] = []
+    for exercise_id in ordered_exercise_ids:
+        exercise = db.session.get(PersonalExercise, exercise_id)
+        if exercise is None:
+            raise ValidationError(f"exercise {exercise_id} not found")
+        exercises.append(exercise)
+    return exercises
+
+
+def _resolve_bodyweight(payload: dict[str, Any], exercises: list[PersonalExercise]) -> Decimal | None:
+    needs_bodyweight = any(ex.load_kind and ex.load_kind.value == "bodyweight_external" for ex in exercises)
+    bodyweight = _parse_decimal(payload.get("bodyweight_kg"), "bodyweight_kg", nullable=True)
+    if not needs_bodyweight or bodyweight is not None:
+        return bodyweight
+
+    latest = latest_bodyweight()
+    if latest is None:
+        raise ValidationError("bodyweight_kg is required for bodyweight exercises")
+    return latest.bodyweight_kg
+
+
+def _serialize_exercise_cycles(exercises: list[PersonalExercise], cycles: dict[int, Any]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for exercise in exercises:
+        cycle = cycles.get(exercise.id)
+        entries.append(
+            {
+                "exercise_id": exercise.id,
+                "exercise_name": exercise.name,
+                "kind": exercise.kind.value,
+                "cycle_week": cycle.week_no if cycle else None,
+                "cycle_number": cycle.cycle_number if cycle else None,
+                "cycle_weeks": CYCLE_WEEKS if cycle else None,
+                "logged_this_week": cycle.logged_this_week if cycle else False,
+                "is_restart": cycle.is_restart if cycle else False,
+            }
+        )
+    return entries
+
+
 @personal_api_bp.route("/workout-sessions/preview", methods=["POST"])
 def preview_workout_session():
     payload = request.get_json(silent=True) or {}
@@ -411,24 +422,9 @@ def preview_workout_session():
     mode = _resolve_mode(payload)
     session_day = _resolve_session_day(payload)
 
-    snapshot = cycle_snapshot(session_day)
-
-    exercises: list[PersonalExercise] = []
-    for exercise_id in ordered_exercise_ids:
-        exercise = db.session.get(PersonalExercise, exercise_id)
-        if exercise is None:
-            raise ValidationError(f"exercise {exercise_id} not found")
-        exercises.append(exercise)
-
-    needs_bodyweight = any(ex.load_kind and ex.load_kind.value == "bodyweight_external" for ex in exercises)
-    bodyweight_input = payload.get("bodyweight_kg")
-    bodyweight = _parse_decimal(bodyweight_input, "bodyweight_kg", nullable=True)
-    if needs_bodyweight and bodyweight is None:
-        latest = latest_bodyweight()
-        if latest:
-            bodyweight = latest.bodyweight_kg
-        else:
-            raise ValidationError("bodyweight_kg is required for bodyweight exercises")
+    exercises = _resolve_exercises(ordered_exercise_ids)
+    bodyweight = _resolve_bodyweight(payload, exercises)
+    cycles = exercise_cycle_states(exercises, session_day)
 
     pseudo_items = []
     for index, exercise in enumerate(exercises, start=1):
@@ -444,7 +440,7 @@ def preview_workout_session():
     task_plan = build_task_plan(
         session_items=pseudo_items,
         mode=mode,
-        cycle_week=snapshot.cycle_week,
+        cycles=cycles,
         bodyweight_kg=bodyweight,
     )
 
@@ -454,8 +450,8 @@ def preview_workout_session():
             "source": source.value,
             "template_id": template_id,
             "session_date": session_day.isoformat(),
-            "cycle_number": snapshot.cycle_number,
-            "cycle_week": snapshot.cycle_week,
+            "cycle_weeks": CYCLE_WEEKS,
+            "exercise_cycles": _serialize_exercise_cycles(exercises, cycles),
             "bodyweight_kg": decimal_to_float(bodyweight),
             "task_count": len(task_plan),
             "first_task": task_plan[0] if task_plan else None,
@@ -470,32 +466,19 @@ def create_workout_session():
     source, template_id, ordered_exercise_ids = _resolve_session_exercise_ids(payload)
     mode = _resolve_mode(payload)
     session_day = _resolve_session_day(payload)
-    snapshot = cycle_snapshot(session_day)
 
-    exercises: list[PersonalExercise] = []
-    for exercise_id in ordered_exercise_ids:
-        exercise = db.session.get(PersonalExercise, exercise_id)
-        if exercise is None:
-            raise ValidationError(f"exercise {exercise_id} not found")
-        exercises.append(exercise)
+    exercises = _resolve_exercises(ordered_exercise_ids)
+    bodyweight = _resolve_bodyweight(payload, exercises)
+    cycles = exercise_cycle_states(exercises, session_day)
 
-    needs_bodyweight = any(ex.load_kind and ex.load_kind.value == "bodyweight_external" for ex in exercises)
-    bodyweight_input = payload.get("bodyweight_kg")
-    bodyweight = _parse_decimal(bodyweight_input, "bodyweight_kg", nullable=True)
-    if needs_bodyweight and bodyweight is None:
-        latest = latest_bodyweight()
-        if latest:
-            bodyweight = latest.bodyweight_kg
-        else:
-            raise ValidationError("bodyweight_kg is required for bodyweight exercises")
-
+    # Cycles belong to the exercises now, so the session itself no longer carries one.
     session = PersonalWorkoutSession(
         session_date=session_day,
         mode=mode,
         source=source,
         template_id=template_id,
-        cycle_number=snapshot.cycle_number,
-        cycle_week=snapshot.cycle_week,
+        cycle_number=None,
+        cycle_week=None,
         bodyweight_kg=bodyweight,
         task_plan=[],
         next_task_index=0,
@@ -519,7 +502,7 @@ def create_workout_session():
     task_plan = build_task_plan(
         session_items=session_items,
         mode=mode,
-        cycle_week=snapshot.cycle_week,
+        cycles=cycles,
         bodyweight_kg=bodyweight,
     )
     session.task_plan = task_plan
@@ -576,6 +559,15 @@ def complete_task(session_id: int, task_index: int):
         set_index = int(task.get("set_index"))
 
         exercise_name = str(task.get("exercise_name", "")).strip() or "Unknown exercise"
+        # The task carries the exercise's own cycle position. Sessions started before
+        # cycles became per exercise fall back to the cycle stamped on the session.
+        cycle_week = task.get("cycle_week")
+        if cycle_week is None:
+            cycle_week = session.cycle_week or 1
+        cycle_number = task.get("cycle_number")
+        if cycle_number is None:
+            cycle_number = session.cycle_number or 1
+
         log = PersonalSetLog(
             session_id=session.id,
             session_item_id=session_item_id,
@@ -585,8 +577,9 @@ def complete_task(session_id: int, task_index: int):
             planned_reps=planned_reps,
             actual_reps=actual_reps_int,
             planned_weight_kg=planned_weight_kg,
-            cycle_number=session.cycle_number,
-            cycle_week=session.cycle_week,
+            performed_at=_performed_at(session),
+            cycle_number=int(cycle_number),
+            cycle_week=int(cycle_week),
         )
         db.session.add(log)
     else:
@@ -599,6 +592,7 @@ def complete_task(session_id: int, task_index: int):
             session_id=session.id,
             exercise_id=exercise_id,
             exercise_name=exercise_name,
+            performed_at=_performed_at(session),
             note=note,
         )
         db.session.add(log)

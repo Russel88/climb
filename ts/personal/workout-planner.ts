@@ -22,9 +22,18 @@ interface PreviewTask {
   planned_reps: number | null;
 }
 
+interface PreviewExerciseCycle {
+  exercise_id: number;
+  exercise_name: string;
+  kind: string;
+  cycle_week: number | null;
+  cycle_number: number | null;
+  cycle_weeks: number | null;
+}
+
 interface PreviewResponse {
-  cycle_number: number;
-  cycle_week: number;
+  cycle_weeks: number;
+  exercise_cycles: PreviewExerciseCycle[];
   task_count: number;
   first_task: PreviewTask | null;
   tasks: PreviewTask[];
@@ -155,7 +164,15 @@ function refreshSourceMode(): void {
 
 function renderPreview(data: PreviewResponse): void {
   previewPanel.innerHTML = '';
-  previewPanel.appendChild(line(`Cycle ${data.cycle_number}, week ${data.cycle_week}`));
+
+  (data.exercise_cycles || [])
+    .filter((entry) => entry.cycle_week != null)
+    .forEach((entry) => {
+      previewPanel.appendChild(
+        line(`${entry.exercise_name}: week ${entry.cycle_week}/${entry.cycle_weeks ?? data.cycle_weeks}, cycle ${entry.cycle_number}`),
+      );
+    });
+
   previewPanel.appendChild(line(`Tasks: ${data.task_count}`));
 
   data.tasks.forEach((task, index) => {
