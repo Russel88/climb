@@ -336,6 +336,11 @@ button:disabled {
   white-space: nowrap;
 }
 
+.exercise-target-load {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 .week-badge.is-muted {
   background: rgba(142, 162, 195, 0.12);
   color: #8ea2c3;

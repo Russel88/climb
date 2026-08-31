@@ -611,12 +611,16 @@ def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, A
 
     def serialize_status_exercise(exercise: PersonalExercise) -> dict[str, Any]:
         cycle = cycles.get(exercise.id)
+        target_added_weight_kg = (
+            float(exercise.target_added_weight_kg) if exercise.target_added_weight_kg is not None else None
+        )
 
         if cycle is None:
             return {
                 "id": exercise.id,
                 "name": exercise.name,
                 "kind": exercise.kind.value,
+                "target_added_weight_kg": target_added_weight_kg,
                 "cycle_week": None,
                 "cycle_number": None,
                 "cycle_weeks": None,
@@ -630,6 +634,7 @@ def weekly_exercise_log_status(reference_day: date | None = None) -> dict[str, A
             "id": exercise.id,
             "name": exercise.name,
             "kind": exercise.kind.value,
+            "target_added_weight_kg": target_added_weight_kg,
             "cycle_week": cycle.week_no,
             "cycle_number": cycle.cycle_number,
             "cycle_weeks": CYCLE_WEEKS,

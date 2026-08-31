@@ -57,6 +57,7 @@ export interface WeeklyExerciseDto {
   id: number;
   name: string;
   kind: 'progressive' | 'non_progressive';
+  target_added_weight_kg: number | null;
   cycle_week: number | null;
   cycle_number: number | null;
   cycle_weeks: number | null;

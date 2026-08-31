@@ -342,7 +342,9 @@ class WeeklyExerciseLogStatusTestCase(PersonalDatabaseTestCase):
         self.assertEqual(by_name["Pull-up"]["cycle_week"], 3)
         self.assertEqual(by_name["Dips"]["cycle_week"], 1)
         self.assertEqual(by_name["Pull-up"]["cycle_weeks"], 4)
+        self.assertEqual(by_name["Pull-up"]["target_added_weight_kg"], 20.0)
         self.assertIsNone(by_name["Mobility"]["cycle_week"])
+        self.assertIsNone(by_name["Mobility"]["target_added_weight_kg"])
         self.assertNotIn("Inactive", by_name)
 
     def test_logged_split_and_dot_follow_this_week(self):

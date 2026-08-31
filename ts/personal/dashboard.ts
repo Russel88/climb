@@ -52,11 +52,13 @@ function weekLabel(exercise: WeeklyExerciseDto): string {
   return `Week ${exercise.cycle_week}/${exercise.cycle_weeks ?? 4}`;
 }
 
-function cycleLabel(exercise: WeeklyExerciseDto): string {
-  if (exercise.cycle_number == null) {
+function targetLoadLabel(exercise: WeeklyExerciseDto): string {
+  const target = exercise.target_added_weight_kg;
+  if (target == null) {
     return '';
   }
-  return `cycle ${exercise.cycle_number}`;
+  const rounded = Number(target.toFixed(2));
+  return `${rounded} kg`;
 }
 
 function statusExplanation(exercise: WeeklyExerciseDto): string {
@@ -112,11 +114,13 @@ function exerciseGroup(title: string, exercises: WeeklyExerciseDto[]): HTMLDivEl
     badge.title = statusExplanation(exercise);
     meta.appendChild(badge);
 
-    const cycle = cycleLabel(exercise);
-    if (cycle) {
-      const cycleText = document.createElement('small');
-      cycleText.textContent = cycle;
-      meta.appendChild(cycleText);
+    const targetLoad = targetLoadLabel(exercise);
+    if (targetLoad) {
+      const targetText = document.createElement('small');
+      targetText.className = 'exercise-target-load';
+      targetText.textContent = targetLoad;
+      targetText.title = 'Target load';
+      meta.appendChild(targetText);
     }
 
     summary.append(statusDot, name);
