@@ -58,17 +58,23 @@ function mustElement(id) {
 }
 var suggestions = mustElement("suggestions");
 var weeklyExerciseStatus = mustElement("weeklyExerciseStatus");
-async function loadDashboard() {
+async function loadWeeklyStatus() {
   try {
-    const [weeklyStatus, suggestionPayload] = await Promise.all([
-      apiGet("/personal/api/dashboard/week-exercises"),
-      apiGet("/personal/api/cycle/suggestions")
-    ]);
-    renderWeeklyExerciseStatus(weeklyStatus);
-    renderSuggestions(suggestionPayload.suggestions || []);
+    renderWeeklyExerciseStatus(await apiGet("/personal/api/dashboard/week-exercises"));
   } catch (error) {
     setToast(weeklyExerciseStatus, errorMessage(error), true);
   }
+}
+async function loadSuggestions() {
+  try {
+    const payload = await apiGet("/personal/api/cycle/suggestions");
+    renderSuggestions(payload.suggestions || []);
+  } catch (error) {
+    setToast(suggestions, errorMessage(error), true);
+  }
+}
+async function loadDashboard() {
+  await Promise.all([loadWeeklyStatus(), loadSuggestions()]);
 }
 function renderWeeklyExerciseStatus(status) {
   weeklyExerciseStatus.innerHTML = "";
@@ -180,4 +186,4 @@ function line(text) {
   element.textContent = text;
   return element;
 }
-loadDashboard();
+loadDashboard().catch((error) => setToast(weeklyExerciseStatus, errorMessage(error), true));

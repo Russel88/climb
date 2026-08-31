@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ page_title }} | Personal Training</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='personal/css/personal.css') }}">
+  <link rel="stylesheet" href="{{ static_url('personal/css/personal.css') }}">
 </head>
 <body>
   <header class="app-header">
@@ -31,7 +31,7 @@
     {% block content %}{% endblock %}
   </main>
 
-  <script type="module" src="{{ url_for('static', filename='personal/js/main.js') }}"></script>
+  <script type="module" src="{{ static_url('personal/js/main.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

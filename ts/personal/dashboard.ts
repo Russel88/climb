@@ -16,18 +16,26 @@ function mustElement<T extends HTMLElement>(id: string): T {
 const suggestions = mustElement<HTMLDivElement>('suggestions');
 const weeklyExerciseStatus = mustElement<HTMLDivElement>('weeklyExerciseStatus');
 
-async function loadDashboard(): Promise<void> {
+// The two panels load independently: a failure in one must not blank the other.
+async function loadWeeklyStatus(): Promise<void> {
   try {
-    const [weeklyStatus, suggestionPayload] = await Promise.all([
-      apiGet<WeeklyExerciseStatusDto>('/personal/api/dashboard/week-exercises'),
-      apiGet<SuggestionsResponse>('/personal/api/cycle/suggestions'),
-    ]);
-
-    renderWeeklyExerciseStatus(weeklyStatus);
-    renderSuggestions(suggestionPayload.suggestions || []);
+    renderWeeklyExerciseStatus(await apiGet<WeeklyExerciseStatusDto>('/personal/api/dashboard/week-exercises'));
   } catch (error) {
     setToast(weeklyExerciseStatus, errorMessage(error), true);
   }
+}
+
+async function loadSuggestions(): Promise<void> {
+  try {
+    const payload = await apiGet<SuggestionsResponse>('/personal/api/cycle/suggestions');
+    renderSuggestions(payload.suggestions || []);
+  } catch (error) {
+    setToast(suggestions, errorMessage(error), true);
+  }
+}
+
+async function loadDashboard(): Promise<void> {
+  await Promise.all([loadWeeklyStatus(), loadSuggestions()]);
 }
 
 function renderWeeklyExerciseStatus(status: WeeklyExerciseStatusDto): void {
@@ -177,4 +185,4 @@ function line(text: string): HTMLDivElement {
   return element;
 }
 
-loadDashboard();
+loadDashboard().catch((error) => setToast(weeklyExerciseStatus, errorMessage(error), true));

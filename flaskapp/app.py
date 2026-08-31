@@ -4,7 +4,7 @@ import os
 import sqlite3
 import json
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, url_for
 
 from flaskapp.extensions import db
 from flaskapp.personal import personal_api_bp, personal_bp
@@ -53,6 +53,16 @@ def create_app() -> Flask:
 
     app.register_blueprint(personal_bp)
     app.register_blueprint(personal_api_bp)
+
+    @app.template_global()
+    def static_url(filename: str) -> str:
+        """Static URL carrying the file's mtime, so a rebuilt bundle is never cached."""
+
+        try:
+            version = int(os.path.getmtime(os.path.join(app.static_folder, filename)))
+        except OSError:
+            return url_for("static", filename=filename)
+        return url_for("static", filename=filename, v=version)
 
     @app.route("/")
     def index():
