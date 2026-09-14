@@ -13,6 +13,10 @@ from __future__ import annotations
 
 import sys
 from datetime import date, timedelta
+from pathlib import Path
+
+# Running a file inside tools/ puts tools/ on sys.path, not the repo root.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from flaskapp.app import create_app
 from flaskapp.extensions import db
