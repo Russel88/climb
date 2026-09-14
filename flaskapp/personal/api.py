@@ -4,7 +4,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 
@@ -94,15 +94,21 @@ def _validation_error(exc: ValidationError):
 
 
 @personal_api_bp.errorhandler(IntegrityError)
-def _integrity_error(_: IntegrityError):
+def _integrity_error(exc: IntegrityError):
     db.session.rollback()
-    return _error("Database integrity error", 409)
+    current_app.logger.exception("Database integrity error")
+    # The driver message names the constraint that failed, which is the only thing that
+    # tells a schema drift (a migration that never ran) apart from a genuine conflict.
+    detail = str(getattr(exc, "orig", "")).strip()
+    message = f"Database integrity error: {detail}" if detail else "Database integrity error"
+    return _error(message, 409)
 
 
 @personal_api_bp.errorhandler(Exception)
 def _unhandled_error(exc: Exception):
     db.session.rollback()
-    return _error(f"Internal error: {exc}", 500)
+    current_app.logger.exception("Unhandled error")
+    return _error(f"Internal error: {type(exc).__name__}: {exc}", 500)
 
 
 @personal_api_bp.route("/cycle/suggestions", methods=["GET"])
